@@ -75,14 +75,16 @@ export default function App() {
 
     // Selecciona y extrae filas con las clases "RosterOddRow" y "RosterEvenRow" dentro de la tabla HTML
     $('table[id="_tabRoster"] tr.RosterOddRow, table[id="_tabRoster"] tr.RosterEvenRow').each((index, element) => {
-      // Verifica si la fila contiene el componente RosterRowCheckin
-      const hasCheckin = $(element).find('td.RosterRowCheckin').length > 0;
+    
+      // En esta parte verificamos si la fila analizada en el HTML es una
+      //fila vacia, mediante esto:
+      const hasActivity = $(element).find('td.RosterRowActivity').length > 0;
 
       // Si no tiene RosterRowCheckin, saltea esta fila
-      if (!hasCheckin) {
+      if (!hasActivity) {
         return;
       }
-
+      //////******************************************************************************************** */
       const rowData = {};
 
       // Selecciona y extrae datos de cada celda de la fila con clases específicas
@@ -106,7 +108,20 @@ export default function App() {
 
     if (Array.isArray(data)) {
       data.forEach((item) => {
-        const itemDate = new Date(item.columna3).toDateString();
+        const itemDate = new Date(item.ETD).toDateString();
+        console.log('itemDate: ' + itemDate)  
+        const cadena = item.ETD;
+// Utiliza una expresión regular para buscar los caracteres deseados
+const match = cadena.match(/\d{2}[A-Z]{3}/);
+// Si se encuentra una coincidencia, se imprimirá en la consola
+console.log('MATCH:' + match)
+if (match) {
+  console.log(match[0]);
+
+
+} else {
+  console.log("No se encontró una coincidencia en la cadena.");
+}
 
         if (!groupedData[itemDate]) {
           groupedData[itemDate] = [];
