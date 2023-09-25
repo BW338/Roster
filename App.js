@@ -12,6 +12,7 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [rosterData, setRosterData] = useState(null);
   const today = new Date();
+  const [fecha, setFecha] = useState();
   const todayDateString = today.toDateString();
 
   const loadConfig = async () => {
@@ -109,7 +110,7 @@ export default function App() {
     if (Array.isArray(data)) {
       data.forEach((item) => {
         const itemDate = new Date(item.ETD).toDateString();
-        console.log('itemDate: ' + itemDate)  
+        console.log('itemDate: ' + itemDate)  // esto da INVALID DATE
         const cadena = item.ETD;
 // Utiliza una expresión regular para buscar los caracteres deseados
 const match = cadena.match(/\d{2}[A-Z]{3}/);
@@ -117,17 +118,14 @@ const match = cadena.match(/\d{2}[A-Z]{3}/);
 console.log('MATCH:' + match)
 if (match) {
   console.log(match[0]);
-
-
 } else {
   console.log("No se encontró una coincidencia en la cadena.");
 }
-
-        if (!groupedData[itemDate]) {
-          groupedData[itemDate] = [];
+        if (!groupedData[match]) {
+          groupedData[match] = [];
         }
 
-        groupedData[itemDate].push(item);
+        groupedData[match].push(item);
       });
     }
 
@@ -199,7 +197,7 @@ if (match) {
         title="Ver Roster"
         onPress={() => {
           setShowModal(true);
-          console.log('******' + todayDateString);
+        //  console.log('******' + todayDateString);
         }}
       />
 
