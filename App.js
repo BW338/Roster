@@ -95,16 +95,10 @@ const loadConfig = async () => {
       // Verifica si la fila tiene la clase 'TWBorderBottom'
       const hasTWBorderBottom = $(element).hasClass('TWBorderBottom');
   
-      // Si la fila no tiene 'td.RosterRowActivity' pero tiene 'TWBorderBottom'
       if (!$(element).find('td.RosterRowActivity').length && hasTWBorderBottom) {
-        // Extrae la información de 'class="TWBorderBottom"'
         const twBorderBottom = $(element).find('.TWBorderBottom').text();
-        rowData.TWBorderBottom = twBorderBottom.trim(); // Asegúrate de eliminar espacios en blanco
-  
-        // Agrega esta información a la matriz de datos extraídos
-        extractedData.push(rowData);
+        rowData.TWBorderBottom = twBorderBottom.trim();
       } else {
-        // Si la fila tiene 'td.RosterRowActivity', extráela como lo hacías antes
         rowData.CheckIn = $(element).find('td.RosterRowCheckin').text();
         rowData.NroVuelo = $(element).find('td.RosterRowActivity').text();
         rowData.ETD = $(element).find('td.RosterRowStart').text();
@@ -114,16 +108,14 @@ const loadConfig = async () => {
         rowData.CheckOut = $(element).find('td.RosterRowCheckout').text();
         rowData.Avion = $(element).find('td.RosterRowAcType').text();
   
-        // Asociar los datos de tripulación al último ETD encontrado
         if (rowData.ETD) {
           lastETD = rowData.ETD;
         } else if (lastETD) {
-          // Si no se encuentra ETD en esta fila, usa el último ETD encontrado
           rowData.ETD = lastETD;
         }
   
         // Verifica si esta fila tiene información de tripulación y extrae esa información
-        const crewTable = $(element).find('table[id^="cob_"]'); // Filtra las tablas con ID que comienzan con "cob_"
+        const crewTable = $(element).find('table[id^="cob_"]');
         if (crewTable.length > 0) {
           const crewData = [];
           crewTable.find('tr.selectrow1, tr.selectrow0').each((crewIndex, crewElement) => {
@@ -139,18 +131,34 @@ const loadConfig = async () => {
           }
         }
   
-        // Agregar esta fila a los datos extraídos
-        extractedData.push(rowData);
+        if (!isEmptyCrewRow(rowData)) {
+          extractedData.push(rowData);
+        }
+       
+  
       }
     });
-    console.log('Extracted Data:', extractedData); // Agrega esta línea para imprimir los datos extraídos
   
     return extractedData;
   };
   
   
+  // Función auxiliar para verificar si una fila es una fila vacía de tripulación
+  const isEmptyCrewRow = (rowData) => {
+    return (
+      !rowData.CheckIn &&
+      !rowData.NroVuelo &&
+      !rowData.Dep &&
+      !rowData.Arr &&
+      !rowData.ETD &&
+      !rowData.ETA &&
+      !rowData.CheckOut &&
+      !rowData.Avion &&
+      (!rowData.Crew || rowData.Crew.length === 0)
+    );
+  };
   
-
+  
   const groupDataByDay = (data) => {
     const groupedData = {};
   
@@ -207,11 +215,8 @@ const loadConfig = async () => {
   
   
   const groupedCrewData = groupCrewDataByDay(crewData); // Reemplaza 'crewData' con tus datos reales de la tripulación
-//  console.log('Datos en groupedRosterData:', groupedRosterData);
-//  console.log('Datos de la tripulación:', crewData);
-//  console.log('Datos originales de la tripulación:'); // Muestra los datos originales de la tripulación
-  console.log('Datos de la tripulación agrupados por fecha:', groupedCrewData); // Muestra los datos agrupados
-  console.log('Datos de la tripulación extraídos:', crewData);
+  // console.log('Datos de la tripulación agrupados por fecha:', groupedCrewData); // Muestra los datos agrupados
+  // console.log('Datos de la tripulación extraídos:', crewData);
 
  
   const formatDate = (dateStr) => {
@@ -310,7 +315,7 @@ const loadConfig = async () => {
       <Button
         title="Ingresar"
         onPress={() => {
-          console.log('Llamando a injectJavaScript');
+   //       console.log('Llamando a injectJavaScript');
           webViewRef.current?.injectJavaScript(`
             var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
             var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
@@ -355,66 +360,90 @@ const loadConfig = async () => {
   animationType="slide"
   onRequestClose={() => setShowModal(false)}
 >
-  <Text style={{
-    borderWidth: 1,
-    borderColor: '#40e0d0',
-    color: 'white',
-    textAlign: 'center', 
-    textAlignVertical: 'center',
-    fontSize: 32, 
-    textTransform: 'uppercase', 
-    padding: 2,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginHorizontal: '4%',
-    marginTop: '0%',
-    marginVertical: 6,
-    fontWeight: 'bold',
-    backgroundColor: `#4682b4`
-  }}>
-    ROSTER
-  </Text>
-
   <View style={{ flex: 1 }}>
-    <ScrollView style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
-        {groupedRosterData.map((group, index) => (
-          <View key={index}>
-            <Text style={{
-              textAlign:'left',
-              paddingHorizontal: 4,
-              paddingVertical: 2,
-              fontWeight: 'bold',
-              borderWidth:2,
-              borderColor:'yellow',
-              fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
-              color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
-              backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
-            }}>{formatDate(group.date)}</Text>
-            {group.items.map((item, itemIndex) => {
-              const hasDepArr = item.Dep && item.Arr;
-              const hasETD = item.ETD;
-              const hasETA = item.ETA;
-              const hasAvion = item.Avion && item.Avion !== ' ';
-              const hasCheckIn = !!item.CheckIn && item.NroVuelo !== 'GUA';
-              const hasCheckOut = !!item.CheckOut && item.NroVuelo !== 'GUA';
-              const hasNroVuelo = item.NroVuelo && item.NroVuelo !== ' ';
-              const hasCrew = item.Crew && item.Crew.length > 0; // Verifica si hay información de tripulación
+    <Text style={{
+      borderWidth: 1,
+      borderColor: '#40e0d0',
+      color: 'white',
+      textAlign: 'center',
+      textAlignVertical: 'center',
+      fontSize: 32,
+      textTransform: 'uppercase',
+      padding: 2,
+      paddingVertical: 6,
+      borderRadius: 20,
+      marginHorizontal: '4%',
+      marginTop: '0%',
+      marginVertical: 6,
+      fontWeight: 'bold',
+      backgroundColor: `#4682b4`
+    }}>
+      ROSTER
+    </Text>
 
-              return (
-                <View
-                  key={itemIndex}
-                  style={{
-                    borderWidth:2,
-                    borderColor:'lightblue',
-                    flexDirection: 'column', // Cambiar a columna
-                    opacity: formatDate(group.date) === formatCustomDate(currentDate) ? 1 : 0.64,
-                    backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : getColor(group.date),
-                    marginBottom: 8, // Espacio entre filas
-                  }}
-                >
-                  {/* Columna izquierda: datos del vuelo */}
-                  <View style={{ flex: 1 }}>
+    <ScrollView style={{ flex: 1 }}>
+      {groupedRosterData.map((group, index) => (
+        <View key={index}>
+          <Text style={{
+            textAlign: 'left',
+            paddingHorizontal: 4,
+            paddingVertical: 2,
+            fontWeight: 'bold',
+            borderWidth: 2,
+            borderColor: 'violet',
+            fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
+            color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
+            backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
+          }}>{formatDate(group.date)}</Text>
+          {group.items.map((item, itemIndex) => {
+            const hasDepArr = item.Dep && item.Arr;
+            const hasETD = item.ETD;
+            const hasETA = item.ETA;
+            const hasAvion = item.Avion && item.Avion !== ' ';
+            const hasCheckIn = !!item.CheckIn && item.NroVuelo !== 'GUA';
+            const hasCheckOut = !!item.CheckOut && item.NroVuelo !== 'GUA';
+            const hasNroVuelo = item.NroVuelo && item.NroVuelo !== ' ';
+            const hasCrew = item.Crew && item.Crew.length > 0; // Verifica si hay información de tripulación
+
+            // Comprueba si tienes datos válidos antes de renderizar la sección
+            if (
+              !item.CheckIn &&
+              (!item.NroVuelo || item.NroVuelo.trim() === '') &&
+              (!item.Dep || !item.Arr) &&
+              (!item.ETD || !item.ETA) &&
+              !item.CheckOut &&
+              (!item.Avion || item.Avion.trim() === '') &&
+              (!item.Crew || item.Crew.length === 0 || item.Crew === ' ') &&
+              (!item.NroVuelo || item.NroVuelo === '') ||
+              (!item.CheckIn && !item.NroVuelo && 
+                !item.Dep && !item.Arr && !item.ETD && 
+                !item.ETA && !item.CheckOut && !item.Avion 
+                && (!item.Crew || item.Crew.length === 0 || item.Crew === ' '))
+            ) {
+              return null; // Evitar renderizar elementos vacíos
+            }
+
+            return (
+              <View
+                key={itemIndex}
+                style={{
+                  flex: 1,
+                  width:'80%',
+                  flexDirection: 'row', // Esto coloca los elementos en fila
+                  borderWidth: 2,
+                  borderColor: 'black',
+                  opacity:
+                    formatDate(group.date) === formatCustomDate(currentDate) ? 1 : 0.64,
+                  backgroundColor:
+                    formatDate(group.date) === formatCustomDate(currentDate)
+                      ? '#fa8072'
+                      : getColor(group.date),
+                  marginBottom: 0,
+                  margin:5,
+                }}
+              >
+                 {/* Columna izquierda: datos del vuelo */}
+                  <View style={{ flex: 1, borderWidth:2, borderColor:'purple', width:'50%' }} id={'datosVuelo'}>
                     <View style={{ flexDirection: 'column' }}>
                       {hasCheckIn && (
                         <Text style={{ fontWeight: 'bold', fontSize: 16, paddingVertical: 8 }}>
@@ -531,31 +560,30 @@ const loadConfig = async () => {
                   </View>
 
                 {/* Columna derecha: información de la tripulación */}
-                <View style={{ flex: 1, height:'auto', borderWidth:2,borderColor:'red' }}>
-                    {hasCrew && (
-                      <View style={{ alignItems: 'flex-start' }}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Tripulación:</Text>
-                        {item.Crew.map((crewMember, crewIndex) => (
-                          <Text key={crewIndex} style={{ fontSize: 14 }}>
-                            {crewMember.Role}: {crewMember.Name}
-                          </Text>
-                        ))}
-                      </View>
-                    )}
+                {hasCrew && (
+                  <View id={'tripulacion'} style={{ flex: 1, width: '50%', borderWidth: 2, borderColor: 'red' }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Tripulación:</Text>
+                    {item.Crew.map((crewMember, crewIndex) => (
+                      <Text key={crewIndex} style={{ fontSize: 14 }}>
+                        {crewMember.Role}: {crewMember.Name}
+                      </Text>
+                    ))}
                   </View>
-                </View>
-              );
-            })}
-          </View>
-        ))}
-        <Button
-          title="Configuracion"
-          onPress={() => setShowModal(false)}
-        />
-      </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      ))}
     </ScrollView>
-  </View>  
+
+    <Button
+      title="Configuración"
+      onPress={() => setShowModal(false)}
+    />
+  </View>
 </Modal>
+
 
 
 
@@ -575,7 +603,7 @@ const loadConfig = async () => {
           //  console.log('Contenido del Modal:', datos);
 
             AsyncStorage.setItem('rosterData', JSON.stringify(processedData)).then(() => {
-              console.log('RosterData guardado en el almacenamiento local.');
+          //    console.log('RosterData guardado en el almacenamiento local.');
             }).catch((error) => {
               console.error('Error al guardar RosterData:', error);
             });
