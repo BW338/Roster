@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform, TouchableOpacity } from 'react-native';
+import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform, TouchableOpacity,StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
-import { Fontisto, FontAwesome, FontAwesome5, Entypo, Ionicons, Feather, MaterialIcons  } from '@expo/vector-icons';
+import { Fontisto, FontAwesome, FontAwesome5, Entypo, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
@@ -18,10 +18,18 @@ export default function App() {
   const today = new Date();
   const [crewData, setCrewData] = useState([]);
   const [isCrewVisible, setIsCrewVisible] = useState(false);
+  const [selectedFlight, setSelectedFlight] = useState(null);
 
-  const toggleCrewVisibility = () => {
-    setIsCrewVisible(!isCrewVisible);
+  const toggleCrewVisibility = (flightIndex, date) => {
+    if (selectedFlight && selectedFlight.index === flightIndex && selectedFlight.date === date) {
+      // Si ya está abierto, cierra la tripulación
+      setSelectedFlight(null);
+    } else {
+      // Si no está abierto, ábrelo
+      setSelectedFlight({ index: flightIndex, date });
+    }
   };
+
   const formatCustomDate = (date) => {
     const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const dayOfWeek = daysOfWeek[date.getDay()];
@@ -216,12 +224,6 @@ const loadConfig = async () => {
     return groupedCrewDataArray;
   };
   
-  
-  const groupedCrewData = groupCrewDataByDay(crewData); // Reemplaza 'crewData' con tus datos reales de la tripulación
-  // console.log('Datos de la tripulación agrupados por fecha:', groupedCrewData); // Muestra los datos agrupados
-  // console.log('Datos de la tripulación extraídos:', crewData);
-
- 
   const formatDate = (dateStr) => {
     // Mapa de nombres de meses abreviados a números de mes
     const monthMap = {
@@ -288,8 +290,7 @@ const loadConfig = async () => {
     };
   };
   
-  // Crea una instancia de la función getColorByDate
-  const getColor = getColorByDate();
+const getColor = getColorByDate();
   
   
   return (
@@ -455,13 +456,11 @@ const loadConfig = async () => {
                  {/* Columna izquierda: datos del vuelo */} 
                  {(!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name))) && (
  
-                  <View style={{ flex: 1, borderColor:'black', marginLeft:6}} id={'datosVuelo'}>
-                    <View style={{ flexDirection: 'column' }}>
-                      {hasCheckIn && (
-                        <Text style={{ fontWeight: 'bold', fontSize: 16, paddingVertical: 8 }}>
-                          {formatCheckIn(item.CheckIn)}
-                        </Text>
-                      )}
+                  <View style={{ flex: 1, borderColor:'black', marginLeft:6, borderWidth:0, flexDirection:'row'}} id={'datosVuelo'}>
+                  
+                  <View style={{flexDirection:'column', borderColor:'green', borderWidth:0  }}>
+                    <View style={{ flexDirection: 'column', borderColor:'red', borderWidth:0 }}>
+                     
                       {hasNroVuelo && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}>
                           {item.NroVuelo === 'VAC' ? (
@@ -556,45 +555,67 @@ const loadConfig = async () => {
                         <Text style={{ fontSize: 18 }}> - {extractTime(item.ETA)} </Text>
                       </View>
                     )}
-                    {hasCheckOut && (
-                      <View>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold', paddingVertical: 2 }}>
-                          CheckOut {extractTime(item.CheckOut)}
-                        </Text>
-                      </View>
-                    )}
+                   
                     {hasAvion && (
                       <View style={{ flexDirection: 'row', paddingVertical: 2 }}>
+                        <Text> Equipo: </Text>
                         <Ionicons name="airplane" size={18} color="black" />
                         <Text> {item.Avion} </Text>
                       </View>
                     )}
-                    {/* <Text>PRUEBA</Text> */}
+                  
+                 
+                  </View>   
+                  <View>
+                  {hasCheckIn && (
+                        <View style={Styles.checkInContainer}>
+                          <FontAwesome5 name="chevron-circle-right" size={18} color="black" />
+                        <Text style={Styles.CheckIn}>
+                          {formatCheckIn(item.CheckIn)}
+                        </Text>
+                        </View> 
+                      )}
+
+                   {hasCheckOut && (
+                      <View  style={Styles.checkOutContainer}>
+                        <Text style={Styles.CheckOut}>
+                            Checkout  {extractTime(item.CheckOut)}
+                        </Text>
+                        <FontAwesome5 name="chevron-circle-left" size={18} color="black" />
+
+                      </View>
+                    )}    
+                  </View>     
                   </View>)}
 
                 {/* Columna derecha: información de la tripulación */}
-      {hasCrew && (
-  <View style={{ flex: 1, borderColor: 'black', paddingLeft:0}}>
-    <TouchableOpacity
-      onPress={() => toggleCrewVisibility()}
-    >
-      <View style={{ flexDirection: 'row',
-                     backgroundColor: '#ffefd5',
-                     alignContent:'center',
-                     justifyContent:'center',
-                     borderWidth:0.1,
-                     }}>
-        <MaterialIcons name="person-search" size={24} color="black" />
-        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
-          {isCrewVisible ? 'Tripulacion' : 'Tripulacion'}
-        </Text>
-        <Entypo name={isCrewVisible ? 'triangle-up' : 'triangle-down'} size={18} color="black" />
+     {hasCrew && (
+  <View style={Styles.menuTotalCrew}>
+    <TouchableOpacity onPress={() => toggleCrewVisibility(itemIndex, item.ETD)}>
+      
+      <View style={{flexDirection:'row',
+                    justifyContent:'flex-start',
+                    marginLeft:5,
+                    backgroundColor:
+                    formatDate(group.date) === formatCustomDate(currentDate)
+                      ? '#fa8072'
+                      : getColor(group.date),}}>
+      
+      <Ionicons name="people" size={22} color="#191970" />
+      <Text style={{ fontSize: 16,
+                     marginLeft:4,
+                     color:'#191970'}}>
+                     {selectedFlight && selectedFlight.index === itemIndex && selectedFlight.date === item.ETD
+                     ? 'Tripulación' : 'Tripulación'}
+      </Text>
+      <MaterialCommunityIcons name={selectedFlight && selectedFlight.index === itemIndex && selectedFlight.date === item.ETD
+              ? 'menu-up' 
+              : 'menu-down'} size={24} color="#191970" />
       </View>
-    
-    {isCrewVisible && (
-      <View style={{alignContent:'center',
-                    backgroundColor: '#ffefd5',
-                    paddingLeft:6}}>
+
+    {selectedFlight && selectedFlight.index === itemIndex && 
+     selectedFlight.date === item.ETD && hasCrew && (
+        <View style={Styles.manuCrew}>
         {item.Crew.map((crewMember, crewIndex) => (
           <Text key={crewIndex} style={{ fontSize: 14 }}>
             {crewMember.Role}: {crewMember.Name}
@@ -602,12 +623,14 @@ const loadConfig = async () => {
         ))}
       </View>
     )}
-    </TouchableOpacity>
+        </TouchableOpacity>
 
   </View>
 )}
               </View>
+              
             );
+           
           })}
         </View>
       ))}
@@ -620,7 +643,7 @@ const loadConfig = async () => {
   </View>
 </Modal>
 
-      <View style={{ flex: 1, borderWidth: 0.3, borderColor: 'black' }}>
+      <View style={Styles.webview}>
         <WebView
           ref={webViewRef}
           source={{ uri: url }}
@@ -658,3 +681,58 @@ const loadConfig = async () => {
     </View>
   );
 }
+
+const Styles = StyleSheet.create({
+
+  menuTotalCrew:{
+    flex: 1,
+    borderWidth:0.3, 
+    borderColor: 'blue',
+    paddingLeft: 4, 
+    alignContent:'center', 
+    justifyContent:'center'
+  },
+  manuCrew:{
+    fontWeight:'bold',
+    alignContent: 'center',
+    backgroundColor: '#f5fffa',
+    paddingLeft: 4, 
+  },
+  webview:{
+    flex: 1,
+    borderWidth: 0.3,
+    borderColor: 'black'
+  },
+  CheckIn:{
+    marginLeft:4,
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingVertical: 2,
+    alignSelf:'flex-end',
+  },
+  CheckOut:{
+    marginRight:4,
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingVertical: 2,
+    alignSelf:'flex-end',
+  },
+  checkInContainer:{
+    marginLeft:8,
+    paddingTop:4,
+    alignSelf:'center',
+    flexDirection:'row',
+    alignContent:'center',
+    alignItems:'center',
+  },
+  checkOutContainer: {
+    flexDirection:'row',
+  //  borderWidth:2,
+    marginLeft:22, 
+    justifyContent:'center',
+    position:'absolute',
+    bottom:'0%',
+    alignContent:'center',
+    alignItems:'center',    
+  },
+  });
