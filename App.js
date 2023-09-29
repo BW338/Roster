@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform } from 'react-native';
+import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
-import { Fontisto, FontAwesome, FontAwesome5, Entypo, Ionicons, Feather  } from '@expo/vector-icons';
+import { Fontisto, FontAwesome, FontAwesome5, Entypo, Ionicons, Feather, MaterialIcons  } from '@expo/vector-icons';
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
@@ -17,7 +17,11 @@ export default function App() {
   const [rosterData, setRosterData] = useState(null);
   const today = new Date();
   const [crewData, setCrewData] = useState([]);
+  const [isCrewVisible, setIsCrewVisible] = useState(false);
 
+  const toggleCrewVisibility = () => {
+    setIsCrewVisible(!isCrewVisible);
+  };
   const formatCustomDate = (date) => {
     const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const dayOfWeek = daysOfWeek[date.getDay()];
@@ -27,7 +31,6 @@ export default function App() {
 
   };
 
-  
 const loadConfig = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('url');
@@ -290,7 +293,7 @@ const loadConfig = async () => {
   
   
   return (
-    <View style={{ flex: 1, marginHorizontal: '4%', marginTop: '8%' }}>
+    <View style={{ flex: 1, marginHorizontal: '4%', marginTop: '8%'}}>
       <TextInput
         placeholder="Dirección URL"
         value={url}
@@ -389,8 +392,8 @@ const loadConfig = async () => {
             paddingHorizontal: 4,
             paddingVertical: 2,
             fontWeight: 'bold',
-            borderWidth: 2,
-            borderColor: 'violet',
+            borderWidth: 1,
+          //  borderColor: 'violet',
             fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
             color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
             backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
@@ -422,15 +425,22 @@ const loadConfig = async () => {
             ) {
               return null; // Evitar renderizar elementos vacíos
             }
-
+           
+            if (
+              (!item.CheckIn && !item.NroVuelo && !item.Dep && !item.Arr && !item.ETD && !item.ETA && !item.CheckOut && !item.Avion) &&
+              (!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name)))
+            ) {
+              return null; // Evitar renderizar elementos vacíos
+            }
+    
             return (
               <View
                 key={itemIndex}
                 style={{
                   flex: 1,
-                  width:'80%',
+                  width:'100%',
                   flexDirection: 'row', // Esto coloca los elementos en fila
-                  borderWidth: 2,
+                  borderWidth: 1,
                   borderColor: 'black',
                   opacity:
                     formatDate(group.date) === formatCustomDate(currentDate) ? 1 : 0.64,
@@ -439,11 +449,13 @@ const loadConfig = async () => {
                       ? '#fa8072'
                       : getColor(group.date),
                   marginBottom: 0,
-                  margin:5,
+                  margin:0,
                 }}
               >
-                 {/* Columna izquierda: datos del vuelo */}
-                  <View style={{ flex: 1, borderWidth:2, borderColor:'purple', width:'50%' }} id={'datosVuelo'}>
+                 {/* Columna izquierda: datos del vuelo */} 
+                 {(!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name))) && (
+ 
+                  <View style={{ flex: 1, borderColor:'black', marginLeft:6}} id={'datosVuelo'}>
                     <View style={{ flexDirection: 'column' }}>
                       {hasCheckIn && (
                         <Text style={{ fontWeight: 'bold', fontSize: 16, paddingVertical: 8 }}>
@@ -557,19 +569,43 @@ const loadConfig = async () => {
                         <Text> {item.Avion} </Text>
                       </View>
                     )}
-                  </View>
+                    {/* <Text>PRUEBA</Text> */}
+                  </View>)}
 
                 {/* Columna derecha: información de la tripulación */}
-                {hasCrew && (
-                  <View id={'tripulacion'} style={{ flex: 1, width: '50%', borderWidth: 2, borderColor: 'red' }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Tripulación:</Text>
-                    {item.Crew.map((crewMember, crewIndex) => (
-                      <Text key={crewIndex} style={{ fontSize: 14 }}>
-                        {crewMember.Role}: {crewMember.Name}
-                      </Text>
-                    ))}
-                  </View>
-                )}
+      {hasCrew && (
+  <View style={{ flex: 1, borderColor: 'black', paddingLeft:0}}>
+    <TouchableOpacity
+      onPress={() => toggleCrewVisibility()}
+    >
+      <View style={{ flexDirection: 'row',
+                     backgroundColor: '#ffefd5',
+                     alignContent:'center',
+                     justifyContent:'center',
+                     borderWidth:0.1,
+                     }}>
+        <MaterialIcons name="person-search" size={24} color="black" />
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
+          {isCrewVisible ? 'Tripulacion' : 'Tripulacion'}
+        </Text>
+        <Entypo name={isCrewVisible ? 'triangle-up' : 'triangle-down'} size={18} color="black" />
+      </View>
+    
+    {isCrewVisible && (
+      <View style={{alignContent:'center',
+                    backgroundColor: '#ffefd5',
+                    paddingLeft:6}}>
+        {item.Crew.map((crewMember, crewIndex) => (
+          <Text key={crewIndex} style={{ fontSize: 14 }}>
+            {crewMember.Role}: {crewMember.Name}
+          </Text>
+        ))}
+      </View>
+    )}
+    </TouchableOpacity>
+
+  </View>
+)}
               </View>
             );
           })}
@@ -583,10 +619,6 @@ const loadConfig = async () => {
     />
   </View>
 </Modal>
-
-
-
-
 
       <View style={{ flex: 1, borderWidth: 0.3, borderColor: 'black' }}>
         <WebView
