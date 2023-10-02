@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform, TouchableOpacity,StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
-import { Fontisto, FontAwesome, FontAwesome5, Entypo, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
+import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
@@ -17,10 +17,9 @@ export default function App() {
   const [rosterData, setRosterData] = useState(null);
   const today = new Date();
   const [crewData, setCrewData] = useState([]);
-  const [isCrewVisible, setIsCrewVisible] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState(null);
 
-  const toggleCrewVisibility = (flightIndex, date) => {
+const toggleCrewVisibility = (flightIndex, date) => {
     if (selectedFlight && selectedFlight.index === flightIndex && selectedFlight.date === date) {
       // Si ya está abierto, cierra la tripulación
       setSelectedFlight(null);
@@ -30,7 +29,7 @@ export default function App() {
     }
   };
 
-  const formatCustomDate = (date) => {
+const formatCustomDate = (date) => {
     const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const dayOfWeek = daysOfWeek[date.getDay()];
     const dayOfMonth = date.getDate();
@@ -143,10 +142,45 @@ const loadConfig = async () => {
         }
   
         if (!isEmptyCrewRow(rowData)) {
-          extractedData.push(rowData);
-        }
-       
+          // Calcular la diferencia entre ETD y ETA y agregarla como FT
+          const ETD = rowData.ETD;
+          const ETA = rowData.ETA;
   
+          if (ETD && ETA) {
+            // Extraer las horas y minutos de ETD
+            const ETDTimeParts = ETD.slice(-5).split(":");
+            const ETDHours = parseInt(ETDTimeParts[0], 10);
+            const ETDMinutes = parseInt(ETDTimeParts[1], 10);
+          
+            // Extraer las horas y minutos de ETA
+            const ETATimeParts = ETA.slice(-5).split(":");
+            const ETAHours = parseInt(ETATimeParts[0], 10);
+            const ETAMinutes = parseInt(ETATimeParts[1], 10);
+          
+            // Calcular la diferencia en minutos entre ETD y ETA
+            const diffInMinutes = (ETAHours * 60 + ETAMinutes) - (ETDHours * 60 + ETDMinutes);
+          
+            // Asegurarse de que FT sea siempre positivo
+            var FT = Math.abs(diffInMinutes / 60);
+          
+            // Extraer la parte entera y decimal de FT
+            const horas = Math.floor(FT);
+            const minutosDecimal = (FT - horas) * 60;
+          
+            // Formatear las horas y minutos en HH:mm
+            const horasFormateadas = horas < 10 ? `0${horas}` : horas.toString();
+            const minutosFormateados = minutosDecimal < 10 ? `0${minutosDecimal.toFixed(0)}` : minutosDecimal.toFixed(0);
+          
+            const TiempoDeVuelo = `${horasFormateadas}:${minutosFormateados}`;
+          // Agregar el tiempo de vuelo al objeto rowData
+          rowData.TiempoDeVuelo = TiempoDeVuelo;
+          }              
+  
+          
+          
+          extractedData.push(rowData);
+
+        }
       }
     });
   
@@ -177,10 +211,8 @@ const loadConfig = async () => {
       data.forEach((item) => {
         const cadena = item.ETD;
         const match = cadena.match(/\d{2}[A-Z]{3}/);
-  
         if (match) {
           const dateKey = match[0];
-  
           if (!groupedData[dateKey]) {
             groupedData[dateKey] = {
               date: dateKey,
@@ -251,7 +283,7 @@ const loadConfig = async () => {
   const formatCheckIn = (checkInStr) => {
     // Usar una expresión regular para seleccionar la hora y los minutos
     const match = checkInStr.match(/\d{2}:\d{2}/);
-  
+
     if (match) {
       const time = match[0];
       return `Checkin ${time}`;
@@ -263,7 +295,7 @@ const loadConfig = async () => {
   const extractTime = (dateTimeStr) => {
     // Usar una expresión regular para buscar la hora y los minutos en el formato HH:mm
     const match = dateTimeStr.match(/\d{2}:\d{2}/);
-  
+
     if (match) {
       return match[0]; // Devolver la hora y los minutos en el formato HH:mm
     } else {
@@ -291,27 +323,46 @@ const loadConfig = async () => {
   };
   
 const getColor = getColorByDate();
-  
-  
+
   return (
-    <View style={{ flex: 1, marginHorizontal: '4%', marginTop: '8%'}}>
+<View style={{ flex: 1, marginHorizontal: '4%', marginTop: '8%'}}>
+  
+  <View style={{borderWidth:1}}>
+  
+    <View style={{borderWidth:1}}>
+      <Text>Ingresa la direccion Web tu plan de vuelo:</Text>
       <TextInput
         placeholder="Dirección URL"
         value={url}
         onChangeText={(text) => setUrl(text)}
       />
+    </View>
+
+   <View style={{borderWidth:1, backgroundColor:'#dcdcdc'}}> 
+    
+    <View>
+      <Text style={{marginLeft:'2%'}}>Usuario</Text> 
       <TextInput
-        placeholder="Nombre de Usuario"
+        style={{backgroundColor:'white', marginHorizontal:'2%', paddingLeft:'1%'}}
+        placeholder="Legajo..."
         value={username}
         onChangeText={(text) => setUsername(text)}
       />
+    </View>
+    
+    <View>
+      <Text  style={{marginLeft:'2%'}}>Contraseña</Text>
       <TextInput
-        placeholder="Contraseña"
+        style={{backgroundColor:'white', marginHorizontal:'2%', paddingLeft:'1%'}}      
+        placeholder="Contraseña..."
         secureTextEntry
         value={password}
         onChangeText={(text) => setPassword(text)}
       />
+    </View>
 
+    </View>   
+  </View>
     <Button 
     title="Guardar datos" 
     onPress={saveConfig} />
@@ -319,7 +370,6 @@ const getColor = getColorByDate();
       <Button
         title="Ingresar"
         onPress={() => {
-   //       console.log('Llamando a injectJavaScript');
           webViewRef.current?.injectJavaScript(`
             var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
             var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
@@ -355,7 +405,6 @@ const getColor = getColorByDate();
         title="Ver Roster"
         onPress={() => {
           setShowModal(true);
-        //  console.log('******' + todayDateString);
         }}
       />
 
@@ -364,30 +413,20 @@ const getColor = getColorByDate();
   animationType="slide"
   onRequestClose={() => setShowModal(false)}
 >
-  <View style={{ flex: 1 }}>
-    <Text style={{
-      borderWidth: 1,
-      borderColor: '#40e0d0',
-      color: 'white',
-      textAlign: 'center',
-      textAlignVertical: 'center',
-      fontSize: 32,
-      textTransform: 'uppercase',
-      padding: 2,
-      paddingVertical: 6,
-      borderRadius: 20,
-      marginHorizontal: '4%',
-      marginTop: '0%',
-      marginVertical: 6,
-      fontWeight: 'bold',
-      backgroundColor: `#4682b4`
-    }}>
-      ROSTER
+  <View style={Styles.container}>
+    
+    <View style={Styles.contenedorTitulo}>
+    <Text style={Styles.titulo}>
+      ROSTER  
     </Text>
+    <Ionicons name="md-arrow-down-circle-sharp" size={34} color="white" />
+    </View>
 
     <ScrollView style={{ flex: 1 }}>
       {groupedRosterData.map((group, index) => (
-        <View key={index}>
+        <View 
+        style={Styles.Modal}
+        key={index}>
           <Text style={{
             textAlign: 'left',
             paddingHorizontal: 4,
@@ -410,8 +449,7 @@ const getColor = getColorByDate();
             const hasCrew = item.Crew && item.Crew.length > 0; // Verifica si hay información de tripulación
 
             // Comprueba si tienes datos válidos antes de renderizar la sección
-            if (
-              !item.CheckIn &&
+          if (!item.CheckIn &&
               (!item.NroVuelo || item.NroVuelo.trim() === '') &&
               (!item.Dep || !item.Arr) &&
               (!item.ETD || !item.ETA) &&
@@ -427,8 +465,8 @@ const getColor = getColorByDate();
               return null; // Evitar renderizar elementos vacíos
             }
            
-            if (
-              (!item.CheckIn && !item.NroVuelo && !item.Dep && !item.Arr && !item.ETD && !item.ETA && !item.CheckOut && !item.Avion) &&
+          if ((!item.CheckIn && !item.NroVuelo && !item.Dep &&
+               !item.Arr && !item.ETD && !item.ETA && !item.CheckOut && !item.Avion) &&
               (!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name)))
             ) {
               return null; // Evitar renderizar elementos vacíos
@@ -439,9 +477,8 @@ const getColor = getColorByDate();
                 key={itemIndex}
                 style={{
                   flex: 1,
-                  width:'100%',
-                  flexDirection: 'row', // Esto coloca los elementos en fila
-                  borderWidth: 1,
+                  flexDirection: 'row',
+                  borderWidth: 1.5,
                   borderColor: 'black',
                   opacity:
                     formatDate(group.date) === formatCustomDate(currentDate) ? 1 : 0.64,
@@ -456,12 +493,13 @@ const getColor = getColorByDate();
                  {/* Columna izquierda: datos del vuelo */} 
                  {(!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name))) && (
  
-                  <View style={{ flex: 1, borderColor:'black', marginLeft:6, borderWidth:0, flexDirection:'row'}} id={'datosVuelo'}>
+                  <View style={Styles.datosActividad} 
+                        id={'datosVuelo'}>
                   
                   <View style={{flexDirection:'column', borderColor:'green', borderWidth:0  }}>
-                    <View style={{ flexDirection: 'column', borderColor:'red', borderWidth:0 }}>
-                     
-                      {hasNroVuelo && (
+                  
+                  <View style={{ flexDirection: 'column', borderColor:'red', borderWidth:0 }}>                    
+                    {hasNroVuelo && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}>
                           {item.NroVuelo === 'VAC' ? (
                             <>
@@ -470,8 +508,14 @@ const getColor = getColorByDate();
                             </>
                           ) : item.NroVuelo === '*'  ? (
                             <>
-                              <FontAwesome name="home" size={24} color="black" />
+                              {/* <FontAwesome name="home" size={24} color="black" /> */}
+                            <View style={{flexDirection:'row',
+                                          justifyContent:'center',
+                                          alignContent:'center',
+                                          alignItems:'center' }}>
+                              <FontAwesome5 name="asterisk" size={20} color="black" />
                               <Text style={{ fontSize: 16, marginLeft: 8 }}>DIA OFF</Text>
+                            </View>
                             </>
                           ) : item.NroVuelo === 'ELD' || item.NroVuelo === 'ELR'  ? (
                             <>
@@ -505,7 +549,7 @@ const getColor = getColorByDate();
                             </>
                           )  : item.NroVuelo === 'D/L' ? (
                             <>
-                              <Ionicons name="ios-home-outline" size={24} color="black" />
+                              <FontAwesome name="home" size={24} color="black"/> 
                               <Text style={{ fontSize: 16, marginLeft: 8 }}> D/L - DIA LIBRE</Text>
                             </>
                           )  : item.NroVuelo === 'NPR' ? (
@@ -541,32 +585,32 @@ const getColor = getColorByDate();
                             </>
                           )}
                         </View>
-                      )}
-                    </View>
+                    )}
+                  </View>
                     {hasDepArr && (
                       <View style={{ flexDirection: 'row' }}>
                         <Text style={{ fontSize: 18 }}> {item.Dep} - </Text>
                         <Text style={{ fontSize: 18 }}> {item.Arr}</Text>
+                        <Text style={{ fontSize: 18 }}> {item.FT}</Text>
+
                       </View>
                     )}
-                    {hasETD && hasETA && (
+                    {hasETD && hasETA && hasAvion && (
                       <View style={{ flexDirection: 'row' }}>
                         <Text style={{ fontSize: 18 }}>{extractTime(item.ETD)}</Text>
                         <Text style={{ fontSize: 18 }}> - {extractTime(item.ETA)} </Text>
                       </View>
-                    )}
-                   
+                    )} 
                     {hasAvion && (
                       <View style={{ flexDirection: 'row', paddingVertical: 2 }}>
                         <Text> Equipo: </Text>
                         <Ionicons name="airplane" size={18} color="black" />
                         <Text> {item.Avion} </Text>
                       </View>
-                    )}
-                  
-                 
-                  </View>   
-                  <View>
+                    )}               
+                  </View> 
+                
+                  <View style={Styles.datosSecundarios}>
                   {hasCheckIn && (
                         <View style={Styles.checkInContainer}>
                           <FontAwesome5 name="chevron-circle-right" size={18} color="black" />
@@ -574,21 +618,48 @@ const getColor = getColorByDate();
                           {formatCheckIn(item.CheckIn)}
                         </Text>
                         </View> 
-                      )}
+                  )}
+                   {hasAvion && (
+                      <View style={{flex:0.5,
+                                    alignSelf:'center', 
+                                    flexDirection: 'column',
+                                   //  paddingVertical: 2,
+                                    // justifyContent:'center', 
+                                    // alignContent:'center',
+                                    // alignItems:'center',
+                                    // borderWidth:1,
+                                    // borderRadius:30,
 
+                                     }}>
+                        <Text style={{ fontSize: 18,
+                                       textAlign:'center',
+                                      // padding:3. 
+                                       }}>Tiempo de vuelo:</Text>
+                     
+                      <View style={{flexDirection:'row', justifyContent:'space-around', marginTop:0}}> 
+                      <MaterialIcons name="flight-takeoff" size={22} color="black" />
+                        <Text style={{ fontSize: 18,
+                                       textAlign:'center',
+                                      // padding:3,
+                                      fontWeight:'bold',
+                        }}>{extractTime(item.TiempoDeVuelo)} </Text>
+                        <MaterialCommunityIcons name="airplane-landing" size={22} color="black" />
+                      
+                      </View>
+                    </View>
+                    )} 
+                      
                    {hasCheckOut && (
                       <View  style={Styles.checkOutContainer}>
                         <Text style={Styles.CheckOut}>
                             Checkout  {extractTime(item.CheckOut)}
                         </Text>
                         <FontAwesome5 name="chevron-circle-left" size={18} color="black" />
-
                       </View>
                     )}    
                   </View>     
                   </View>)}
-
-                {/* Columna derecha: información de la tripulación */}
+                {/* Columna información de la tripulación */}
      {hasCrew && (
   <View style={Styles.menuTotalCrew}>
     <TouchableOpacity onPress={() => toggleCrewVisibility(itemIndex, item.ETD)}>
@@ -627,38 +698,64 @@ const getColor = getColorByDate();
 
   </View>
 )}
-              </View>
-              
-            );
-           
+              </View>             
+            );          
           })}
         </View>
       ))}
     </ScrollView>
+ 
+  <View style={Styles.contenedorBotones}>        
+   
+    <TouchableOpacity 
+    style={{flex:1}}
+    onPress={() => setShowModal(false)}
+           >
+      <View style={Styles.botonesMenuInferior}>
+      <Feather name="settings" size={20} color="white" />
+        <Text style={Styles.txBotones}>CONFIGRACION</Text>
+      </View>
+    </TouchableOpacity>
 
-    <Button
-      title="Configuración"
-      onPress={() => setShowModal(false)}
-    />
-  </View>
+    <TouchableOpacity 
+    style={{flex:1}}
+    onPress={() => {
+      webViewRef.current?.injectJavaScript(`
+        var roster = document.querySelector('table[id="_tabRoster"]');
+        if (roster) {
+          var rosterHTML = roster.outerHTML;
+          window.ReactNativeWebView.postMessage(rosterHTML);
+        }
+      `);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Roster actualizado', ToastAndroid.SHORT);
+      } else {
+        Toast.show('Roster actualizado', { duration: Toast.durations.SHORT });
+      }
+    }}
+           >
+      <View style={Styles.botonesMenuInferior}>
+        <Text style={Styles.txBotones}>ACTUALIZAR</Text>
+        <MaterialIcons name="system-update-tv" size={24} color="white" />
+      </View>
+    </TouchableOpacity> 
+  
+  </View>  
+</View>
 </Modal>
 
       <View style={Styles.webview}>
         <WebView
+          isVisiblle={false}
           ref={webViewRef}
           source={{ uri: url }}
           style={{ flex: 1 }}
           onMessage={(event) => {
             const datos = event.nativeEvent.data;
-          //  console.log('Datos recibidos desde el WebView:', datos);
             const processedData = processHTML(datos);
             setRosterData(processedData);
-          //  console.log('ROSTER DATA:', processedData);
-
-          //  console.log('Contenido del Modal:', datos);
 
             AsyncStorage.setItem('rosterData', JSON.stringify(processedData)).then(() => {
-          //    console.log('RosterData guardado en el almacenamiento local.');
             }).catch((error) => {
               console.error('Error al guardar RosterData:', error);
             });
@@ -684,6 +781,51 @@ const getColor = getColorByDate();
 
 const Styles = StyleSheet.create({
 
+  container:{
+    flex: 1,
+    borderWidth:1,
+    borderRadius:20,
+    backgroundColor:'#e6e6fa', 
+  },
+  contenedorTitulo:{
+   // height:0,
+    borderTopLeftRadius:20,
+    borderTopRightRadius:20,
+    backgroundColor:'#191970',
+    justifyContent:'center',
+    alignItems:'center',
+    alignContent:'center',
+    flexDirection:'row',
+    borderWidth:2,
+    borderColor:'#b0c4de',
+    borderBottomColor:'lime',
+
+  },
+  Modal:{
+    borderWidth:3,
+    borderColor:'#b0c4de',
+
+  },
+  titulo:{
+  //  borderWidth: 2,
+  //  borderColor: '#808000',
+    color: 'white',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontSize: 34,
+    textTransform: 'uppercase',
+    padding: 2,
+    paddingVertical: 4,
+    borderRadius: 20,
+   // marginHorizontal: '12%',
+    marginTop: '1%',
+    marginVertical: 6,
+    fontWeight: 'bold',
+    backgroundColor: `#191970`,
+    textShadowColor: '#e6e6fa',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 10,
+  },
   menuTotalCrew:{
     flex: 1,
     borderWidth:0.3, 
@@ -698,6 +840,23 @@ const Styles = StyleSheet.create({
     backgroundColor: '#f5fffa',
     paddingLeft: 4, 
   },
+  datosActividad:{
+    flex: 1,
+    borderColor:'red',
+    marginLeft:6, 
+    borderWidth:0, 
+    flexDirection:'row',
+    justifyContent:'space-between'
+  },
+  datosSecundarios:{
+    flex:0.6,
+    marginVertical:'2%',
+ //   borderWidth:2,
+    borderColor:'red',
+    alignSelf:'center',
+    justifyContent:'space-between', 
+  //  marginRight:'8%',
+  },
   webview:{
     flex: 1,
     borderWidth: 0.3,
@@ -711,13 +870,15 @@ const Styles = StyleSheet.create({
     alignSelf:'flex-end',
   },
   CheckOut:{
+  //  borderWidth:1,
     marginRight:4,
     fontSize: 16,
     fontWeight: 'bold',
     paddingVertical: 2,
-    alignSelf:'flex-end',
+  //  alignSelf:'flex-end',
   },
   checkInContainer:{
+  //  borderWidth:1,
     marginLeft:8,
     paddingTop:4,
     alignSelf:'center',
@@ -727,12 +888,40 @@ const Styles = StyleSheet.create({
   },
   checkOutContainer: {
     flexDirection:'row',
-  //  borderWidth:2,
-    marginLeft:22, 
+ //  borderWidth:2,
+  //  marginLeft:22, 
     justifyContent:'center',
-    position:'absolute',
+  //  position:'absolute',
     bottom:'0%',
     alignContent:'center',
     alignItems:'center',    
+  },
+  contenedorBotones:{
+    backgroundColor: `#191970`,
+    borderBottomLeftRadius:0,
+    borderBottomRigthRadius:0,
+   flexDirection: 'row',
+   height:'5%',
+   justifyContent:'center',
+  },
+  botonesMenuInferior:{
+   flex:1,
+   flexDirection:'row',
+    borderWidth:1,
+    borderColor:'white',
+    justifyContent:'center',
+    alignContent:'center',
+    alignItems:'center',
+  },
+  txBotones:{
+  color:'white',
+  marginLeft:3,
+  marginRight:3,
+  fontSize:16,  
+  alignSelf:'center',
+  fontWeight:'bold',
+  textShadowColor: '#b0c4de',
+  textShadowOffset: { width: 0, height: 0 },
+  textShadowRadius: 2,
   },
   });
