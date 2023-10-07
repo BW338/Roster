@@ -1,22 +1,59 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FIREBASE_AUTH } from "../FirebaseConfig";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { KeyboardAvoidingView } from "react-native";
+import { collection, getFirestore, doc, getDoc } from 'firebase/firestore'; // Importa las funciones necesarias
+import { useNavigation } from '@react-navigation/native';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
-const Login = ({ navigation }) => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = FIREBASE_AUTH;
+
+  
+
+  useEffect(() => {
+    // Leer datos desde AsyncStorage al cargar el componente
+    const fetchData = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('email');
+        if (savedEmail !== null) {
+          setEmail(savedEmail);
+        }const savedPassword = await AsyncStorage.getItem('password');
+        if (savedPassword !== null) {
+          setPassword(savedPassword);
+        }
+      } catch (error) {
+        console.error('Error al leer datos desde AsyncStorage:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const saveData = async () => {
+    try {
+      await AsyncStorage.setItem('email', email);
+      await AsyncStorage.setItem('password', password);
+
+    } catch (error) {
+      console.error('Error al guardar datos en AsyncStorage:', error);
+    }
+  };
 
   const isEmailValid = (email) => {
     // Expresión regular para validar el formato de correo electrónico
     const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
     return emailRegex.test(email);
   };
+  
+  const navigation = useNavigation();
 
-  const singIn = async () => {
+  const signIn = async () => {
     setLoading(true);
     try {
       if (!isEmailValid(email)) {
@@ -29,8 +66,9 @@ const Login = ({ navigation }) => {
       const user = response.user;
       console.log(response);
       // Aquí puedes manejar la redirección o cualquier otra lógica después del inicio de sesión exitoso.
-      alert('Inicio de sesión exitoso');
-      navigation.navigate('Roster'); // Mueve esta línea aquí para que la navegación ocurra después del inicio de sesión exitoso.
+    //  alert('Inicio de sesión exitoso');
+    //  console.log('CAMBIANDO A ROSTER...')
+      navigation.navigate('Roster');
     } catch (error) {
       console.log(error);
       // Aquí puedes manejar errores, como mostrar un mensaje de error al usuario.
@@ -64,7 +102,14 @@ const Login = ({ navigation }) => {
       setLoading(false);
     }
   };
-  
+ 
+  useEffect(() => {
+    // Verifica que ambos campos estén completos y válidos
+    if (isEmailValid(email) && password.length >= 6) {
+      // Realiza el inicio de sesión automáticamente
+      signIn();
+    }
+  }, [email, password]);
 
   return (
     <ImageBackground source={require('../assets/login.jpg')} style={Styles.fondo}>
@@ -85,7 +130,9 @@ const Login = ({ navigation }) => {
         />
         <TouchableOpacity
           style={Styles.loginButton}
-          onPress={singIn}
+          onPress={()=>{
+                       signIn();
+                       saveData();}}
         >
           <Text style={Styles.loginButtonText}>Iniciar Sesión</Text>
         </TouchableOpacity>

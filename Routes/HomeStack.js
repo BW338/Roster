@@ -8,6 +8,7 @@ import Login from "../Screens/Login";
 const Stack = createNativeStackNavigator();
 
 const HomeStack = () => {
+
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -18,6 +19,7 @@ const HomeStack = () => {
         <Stack.Screen name="Splash" component={Splash} />
         <Stack.Screen name="Roster" component={Roster} />
         <Stack.Screen name="Login" component={Login} />
+
 
       </Stack.Navigator>
     </NavigationContainer>

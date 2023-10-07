@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform, TouchableOpacity,StyleSheet } from 'react-native';
+import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Toast, ToastAndroid, Platform, TouchableOpacity,StyleSheet} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomCheckBox from '../Routes/Components/Checkbox';
 import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
+import { useNavigation } from '@react-navigation/native';
 import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
 import { FIREBASE_AUTH } from "../FirebaseConfig"; // Asegúrate de importar el objeto auth de Firebase adecuadamente
- import { initIAP } from 'react-native-iap';
+import { initIAP } from 'react-native-iap';
 import * as RNIap from 'react-native-iap';
- import { getProducts } from 'react-native-iap';
- import { requestPurchase } from 'react-native-iap';
+import { getProducts } from 'react-native-iap';
+import { requestPurchase } from 'react-native-iap';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 
-//import { NavigationContainer } from '@react-navigation/native';
-//import { createStackNavigator } from '@react-navigation/stack';
-//import RosterScreen from './Screens/RosterScreen'; 
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
@@ -20,15 +21,19 @@ const currentDate = new Date(); // Obtiene la fecha actual
 export default function Roster() {
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [clave, setClave] = useState('');
   const webViewRef = useRef(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(true);
   const [rosterData, setRosterData] = useState(null);
   const today = new Date();
   const [crewData, setCrewData] = useState([]);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [accessAllowed, setAccessAllowed] = useState(true); // Estado para controlar si se permite el acceso
   const auth = FIREBASE_AUTH;
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberData, setRememberData] = useState(false);
+
+  const navigation = useNavigation();
 
 //////////////////////
 useEffect(() => {
@@ -99,6 +104,25 @@ async function handlePurchase() {
 
 ////////////////////////////////////////////////////////////////////////  
 */
+useEffect(() => {
+  // Recupera el estado del CheckBox desde AsyncStorage
+  const getRememberDataSetting = async () => {
+    try {
+      const storedRememberData = await AsyncStorage.getItem('rememberData');
+      // Si se encuentra un valor en AsyncStorage, convierte a booleano
+      if (storedRememberData !== null) {
+        setRememberData(JSON.parse(storedRememberData));
+      } else {
+        // Valor predeterminado si no se encuentra ningún valor en AsyncStorage
+        setRememberData(false);
+      }
+    } catch (error) {
+      console.error('Error al recuperar el estado del CheckBox:', error);
+    }
+  };
+
+  getRememberDataSetting();
+}, []);
 
 const toggleCrewVisibility = (flightIndex, date) => {
     if (selectedFlight && selectedFlight.index === flightIndex && selectedFlight.date === date) {
@@ -123,7 +147,7 @@ const loadConfig = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('url');
       const savedUsername = await AsyncStorage.getItem('username');
-      const savedPassword = await AsyncStorage.getItem('password');
+      const savedClave = await AsyncStorage.getItem('clave');
       const savedRosterData = await AsyncStorage.getItem('rosterData');
 
       if (savedUrl) {
@@ -132,8 +156,8 @@ const loadConfig = async () => {
       if (savedUsername) {
         setUsername(savedUsername);
       }
-      if (savedPassword) {
-        setPassword(savedPassword);
+      if (savedClave) {
+        setClave(savedClave);
       }
       if (savedRosterData) {
         setRosterData(JSON.parse(savedRosterData));
@@ -151,7 +175,7 @@ const loadConfig = async () => {
     try {
       await AsyncStorage.setItem('url', url);
       await AsyncStorage.setItem('username', username);
-      await AsyncStorage.setItem('password', password);
+      await AsyncStorage.setItem('clave', clave);
 
       if (Platform.OS === 'android') {
         ToastAndroid.show('Datos guardados', ToastAndroid.SHORT);
@@ -165,10 +189,10 @@ const loadConfig = async () => {
   };
 
   useEffect(() => {
-    if (url && username && password) {
+    if (url && username && clave) {
       webViewRef.current?.reload();
     }
-  }, [url, username, password]);
+  }, [url, username, clave]);
 
   const processHTML = (html) => {
     if (typeof html !== 'string') {
@@ -406,48 +430,75 @@ const loadConfig = async () => {
 const getColor = getColorByDate();
 
   return (
-<View style={{ flex: 1, marginHorizontal: '4%', marginTop: '8%'}}>
-  
-  <View style={{borderWidth:1}}>
-  
-    <View style={{borderWidth:1}}>
-      <Text>Ingresa la direccion Web tu plan de vuelo:</Text>
+    <View style={Styles.container}>
+    <View style={Styles.inputContainer}>
+      <Text style={Styles.label}>Ingresa la dirección Web de tu plan de vuelo:</Text>
       <TextInput
-        placeholder="Dirección URL"
+        style={Styles.input}
+        placeholder="http://portal.com.ar/ccweb/CWPLog/cwp_warT....."
         value={url}
         onChangeText={(text) => setUrl(text)}
       />
     </View>
 
-   <View style={{borderWidth:1, backgroundColor:'#dcdcdc'}}> 
-    
-    <View>
-      <Text style={{marginLeft:'2%'}}>Usuario</Text> 
+    <View style={[Styles.inputContainer, Styles.grayBackground]}>
+      <Text style={Styles.label}>Usuario</Text>
       <TextInput
-        style={{backgroundColor:'white', marginHorizontal:'2%', paddingLeft:'1%'}}
+        style={Styles.input}
         placeholder="Legajo..."
         value={username}
         onChangeText={(text) => setUsername(text)}
       />
-    </View>
-    
-    <View>
-      <Text  style={{marginLeft:'2%'}}>Contraseña</Text>
-      <TextInput
-        style={{backgroundColor:'white', marginHorizontal:'2%', paddingLeft:'1%'}}      
-        placeholder="Contraseña..."
-        secureTextEntry
-        value={password}
-        onChangeText={(text) => setPassword(text)}
-      />
+      
+      <Text style={Styles.label}>Contraseña</Text>
+     
+      <View style={Styles.passwordContainer}>
+       <View style={{flexDirection:'row',
+                     justifyContent:'center',
+                     alignContent:'center',
+                     alignItems:'center'}}>
+        <TextInput
+          style={Styles.input}
+          placeholder="Contraseña..."
+          secureTextEntry={!showPassword} // Usar secureTextEntry según el estado showPassword
+          value={clave}
+          onChangeText={(text) => setClave(text)}
+        />
+         <TouchableOpacity
+          onPress={() => setShowPassword(!showPassword)} // Cambiar el estado showPassword al tocar
+        >
+          <Feather
+            style={{marginLeft:4}}
+            name={showPassword ? "eye-off" : "eye"} // Cambiar el ícono según el estado showPassword
+            size={24}
+            color={showPassword ? "grey" : "black"} // Cambiar el color del ícono según el estado showPassword
+          />
+        </TouchableOpacity>
+        </View>
+       <View styles={{flexDirection:'column', borderWidth:2, borderColor:'red'}}> 
+       <CustomCheckBox
+        label="Recordar datos"
+        checked={rememberData}
+        onChange={(isChecked) => {
+        setRememberData(isChecked);
+    // Almacena el estado del CheckBox en AsyncStorage
+        AsyncStorage.setItem('rememberData', JSON.stringify(isChecked));
+    // Luego, puedes realizar otras acciones según sea necesario
+       if (isChecked) {
+        saveConfig();
+      }else {
+      // Puedes eliminar los datos guardados si el CheckBox se desmarca
+      AsyncStorage.removeItem('url');
+      AsyncStorage.removeItem('username');
+      AsyncStorage.removeItem('clave');
+     }
+    }} />
+       
+        </View>
+      </View>
+
     </View>
 
-    </View>   
-  </View>
-    <Button 
-    title="Guardar datos" 
-    onPress={saveConfig} />
- 
       <Button
         title="Ingresar"
         onPress={() => {
@@ -456,7 +507,7 @@ const getColor = getColorByDate();
             var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
             if (usernameInput && passwordInput) {
               usernameInput.value = '${username}';
-              passwordInput.value = '${password}';
+              passwordInput.value = '${clave}';
               var loginButton = document.querySelector('input[id="_login_btnLogin"]');
               if (loginButton) {
                 loginButton.click();
@@ -489,16 +540,10 @@ const getColor = getColorByDate();
       <Button
         title="Ver Roster"
         onPress={() => {
-          setShowModal(true);
+        // navigation.navigate('RosterScreen', { groupedRosterData, currentDate })
+           setShowModal(true);
         }}
       />
-       <Button 
-    title="Suscripcion anual" 
-    onPress={()=> handlePurchase} />
-       
-    <Button 
-    title="Logout" 
-    onPress={()=> handleLogout} /> 
 
 <Modal
   visible={showModal}
@@ -801,7 +846,7 @@ const getColor = getColorByDate();
    
     <TouchableOpacity 
     style={{flex:1}}
-    onPress={() => setShowModal(false)}
+    onPress={()=>{setShowModal(false), navigation.navigate('Login') }}
            >
       <View style={Styles.botonesMenuInferior}>
       <Feather name="settings" size={20} color="white" />
@@ -809,7 +854,7 @@ const getColor = getColorByDate();
       </View>
     </TouchableOpacity>
 
-    <TouchableOpacity 
+    {/* <TouchableOpacity 
     style={{flex:1}}
     onPress={() => {
       webViewRef.current?.injectJavaScript(`
@@ -830,7 +875,7 @@ const getColor = getColorByDate();
         <Text style={Styles.txBotones}>ACTUALIZAR</Text>
         <MaterialIcons name="system-update-tv" size={24} color="white" />
       </View>
-    </TouchableOpacity> 
+    </TouchableOpacity>  */}
   
   </View>  
 </View>
@@ -873,11 +918,40 @@ const getColor = getColorByDate();
 
 const Styles = StyleSheet.create({
 
-  container:{
+  container: {
+    marginTop:'5%',
     flex: 1,
-    borderWidth:1,
-    borderRadius:20,
-    backgroundColor:'#e6e6fa', 
+    padding: 5,
+    backgroundColor: '#f0f0f0',
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  passwordContainer:{
+    flexDirection:'row',
+    alignContent:'center',
+    alignItems:'center',
+    justifyContent:'space-between'
+  },
+  label: {
+    marginLeft: 5,
+    marginBottom: 5,
+    fontSize: 16,
+    color: '#333',
+  },
+  input: {
+    backgroundColor: 'white',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    fontSize: 16,
+  },
+  grayBackground: {
+    backgroundColor: '#e0e0e0',
+    padding: 10,
+    borderRadius: 10,
   },
   contenedorTitulo:{
    // height:0,

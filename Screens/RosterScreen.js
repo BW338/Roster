@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
-import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function RosterScreen({ route }) {
   const { groupedRosterData, currentDate } = route.params; 

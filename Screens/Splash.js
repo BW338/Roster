@@ -9,7 +9,7 @@ export default function Splash({ navigation }) {
  
   
   const Ingresar = () => {
-    navigation.navigate('Login'); // Utiliza replace en lugar de navigate
+    navigation.navigate('Roster'); 
   }
 
   useEffect(() => {
