@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity,Dimensions } from 'react-native';
+import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FIREBASE_AUTH } from "../FirebaseConfig";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "firebase/auth";
 import { KeyboardAvoidingView } from "react-native";
-import { collection, getFirestore, doc, getDoc } from 'firebase/firestore'; // Importa las funciones necesarias
+import { collection, addDoc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-
 
 const windowHeight = Dimensions.get('window').height;
-const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
-const margenInf = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
+const margenSup = windowHeight * 0.055;
+const margenInf = windowHeight * 0.055;
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -19,16 +17,14 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const auth = FIREBASE_AUTH;
 
-  
-
   useEffect(() => {
-    // Leer datos desde AsyncStorage al cargar el componente
     const fetchData = async () => {
       try {
         const savedEmail = await AsyncStorage.getItem('email');
         if (savedEmail !== null) {
           setEmail(savedEmail);
-        }const savedPassword = await AsyncStorage.getItem('password');
+        }
+        const savedPassword = await AsyncStorage.getItem('password');
         if (savedPassword !== null) {
           setPassword(savedPassword);
         }
@@ -44,18 +40,16 @@ const Login = () => {
     try {
       await AsyncStorage.setItem('email', email);
       await AsyncStorage.setItem('password', password);
-
     } catch (error) {
       console.error('Error al guardar datos en AsyncStorage:', error);
     }
   };
 
   const isEmailValid = (email) => {
-    // Expresión regular para validar el formato de correo electrónico
     const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
     return emailRegex.test(email);
   };
-  
+
   const navigation = useNavigation();
 
   const signIn = async () => {
@@ -70,19 +64,20 @@ const Login = () => {
       const response = await signInWithEmailAndPassword(auth, email, password);
       const user = response.user;
       console.log(response);
-      // Aquí puedes manejar la redirección o cualquier otra lógica después del inicio de sesión exitoso.
-    //  alert('Inicio de sesión exitoso');
-    //  console.log('CAMBIANDO A ROSTER...')
-      navigation.navigate('Roster');
+      
+      if (user.emailVerified) {
+        navigation.navigate('Roster');
+      } else {
+        alert('Debes verificar tu correo electrónico antes de iniciar sesión.');
+      }
     } catch (error) {
       console.log(error);
-      // Aquí puedes manejar errores, como mostrar un mensaje de error al usuario.
       alert('Usuario o contraseña incorrectos, revisa y vuelve a ingresar. ' + error.message);
     } finally {
       setLoading(false);
     }
   };
-  
+
   const createUser = async () => {
     setLoading(true);
     try {
@@ -91,69 +86,59 @@ const Login = () => {
         setLoading(false);
         return;
       }
-
-      // Aquí debes usar la función correspondiente para crear un nuevo usuario en Firebase.
-      // Por ejemplo:
-      const response = await createUserWithEmailAndPassword(auth, email, password);
-      // Después de crear el usuario, puedes realizar cualquier lógica adicional que necesites.
-      // Por ejemplo, almacenar información adicional en Firestore o mostrar un mensaje de registro exitoso.
-      console.log(response); // Puedes imprimir la respuesta de Firebase para verificar si el usuario se creó correctamente.
-      alert('Registro exitoso');
+  
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      await sendEmailVerification(userCredential.user);
+  
+      alert('Se ha enviado un correo de verificación a tu dirección de correo electrónico. Por favor, verifica tu cuenta.');
     } catch (error) {
       console.log(error);
-      // Aquí puedes manejar errores, como mostrar un mensaje de error al usuario.
       alert('Registro fallido: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
- 
-  /*
-  useEffect(() => {
-    // Verifica que ambos campos estén completos y válidos
-    if (isEmailValid(email) && password.length >= 6) {
-      // Realiza el inicio de sesión automáticamente
-      signIn();
-    }
-  }, [email, password]);
-*/
+
   return (
     <ImageBackground source={require('../assets/login.jpg')} style={Styles.fondo}>
       <View style={Styles.container}>
-       <KeyboardAvoidingView behavior="padding">      
-        <TextInput
-          style={Styles.input}
-          placeholder="Correo electrónico"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={Styles.input}
-          placeholder="Contraseña"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity
-          style={Styles.loginButton}
-          onPress={()=>{
-                       signIn();
-                       saveData();}}
-        >
-          <Text style={Styles.loginButtonText}>Iniciar Sesión</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={Styles.registerButton} // Cambia el nombre de la variable para reflejar "Registrarse"
-          onPress={createUser}
-        >
-          <Text style={Styles.registerButtonText}>Registrarse</Text>
-        </TouchableOpacity>
-        
+        <KeyboardAvoidingView behavior="padding">
+          <TextInput
+            style={Styles.input}
+            placeholder="Correo electrónico"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            style={Styles.input}
+            placeholder="Contraseña"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity
+            style={Styles.loginButton}
+            onPress={() => {
+              signIn();
+              saveData();
+            }}
+          >
+            <Text style={Styles.loginButtonText}>Iniciar Sesión</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={Styles.registerButton}
+            onPress={createUser}
+          >
+            <Text style={Styles.registerButtonText}>Registrarse</Text>
+          </TouchableOpacity>
         </KeyboardAvoidingView>
       </View>
     </ImageBackground>
   );
-}
+};
+
+
 
 const Styles = StyleSheet.create({
   fondo: {
