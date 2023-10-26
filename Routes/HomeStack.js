@@ -12,7 +12,7 @@ const HomeStack = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Splash" // ruta inicial
+        initialRouteName="Login" // ruta inicial
         screenOptions={{ headerShown: false }} 
       >
         <Stack.Screen name="App" component={App} />

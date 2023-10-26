@@ -6,14 +6,8 @@ import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
 import { useNavigation } from '@react-navigation/native';
 import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
-import { FIREBASE_AUTH } from "../FirebaseConfig"; // Asegúrate de importar el objeto auth de Firebase adecuadamente
-import { initIAP } from 'react-native-iap';
-import * as RNIap from 'react-native-iap';
-import { getProducts } from 'react-native-iap';
-import { requestPurchase } from 'react-native-iap';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-
+import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig"; // Asegúrate de importar el objeto auth de Firebase adecuadamente
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
@@ -21,12 +15,12 @@ const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
 
 
-export default function Roster() {
+export default function Roster({ route }) {
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [clave, setClave] = useState('');
   const webViewRef = useRef(null);
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const [rosterData, setRosterData] = useState(null);
   const today = new Date();
   const [crewData, setCrewData] = useState([]);
@@ -35,78 +29,54 @@ export default function Roster() {
   const auth = FIREBASE_AUTH;
   const [showPassword, setShowPassword] = useState(false);
   const [rememberData, setRememberData] = useState(false);
-
+  const { userEmail } = route.params;
   const navigation = useNavigation();
-
+  const hoy = Date.now();
+  const [vencimiento, setVencimiento] = useState('');
 //////////////////////
 useEffect(() => {
-  // Función para verificar si ha pasado un mes desde el registro
-  const checkAccess = async () => {
+  const fetchUserData = async () => {
+    const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+    const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+
     try {
-      const user = auth.currentUser;
+      const querySnapshot = await getDocs(queryByEmail);
 
-      if (user) {
-        // Obtén la fecha de registro del usuario desde Firestore
-        const db = getFirestore();
-        const userRef = doc(db, 'users', user.uid); // Asegúrate de que sea la misma colección 'users' que usaste al registrarte.
-        const userSnapshot = await getDoc(userRef);
-        const userData = userSnapshot.data();
-
-        if (userData) {
-          const registrationDate = userData.registrationDate.toDate();
-          const oneMonthAgo = new Date();
-          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-
-          // Compara la fecha de registro con la fecha actual menos un mes
-          if (registrationDate <= oneMonthAgo) {
-            // Ha pasado un mes, restringe el acceso
-            setAccessAllowed(false);
-          }
-        }
+      if (!querySnapshot.empty) {
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          console.log("Datos del usuario:", userData);
+          const exp = doc.data().expirationDate;
+          console.log('EXP: '+ exp)
+          setVencimiento(exp)
+        });
+      } else {
+        console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
       }
     } catch (error) {
-      console.error('Error al verificar el acceso:', error);
+      console.error("Error al consultar los datos del usuario:", error);
+    }       
+  };
+  console.log('HOY: '+ hoy)
+
+  fetchUserData();
+}, [userEmail]);
+
+///////////////////////////////////////////////////////////////
+
+const isUserActive = () => {
+    if (!userData) return "Cargando...";
+
+    if (vencimiento > hoy) {
+      console.log('VIGENTE')
+      return "Vigente";
+    } else {
+      console.log('VENCIDO')
+      return "Vencido";
     }
   };
 
-  checkAccess();
-}, []);  
-///////////////////////////////
-/*
-//////////////////////////////////////////////////////////////////////////////
-//////////////////FUNCIONES RELATIVAS A SUSCRIPCION///////////////////////////  
-
-  async function obtenerProductos() {
-    try {
-      const products = await getProducts(['your_subscription_sku_here']);
-      console.log('Productos:', products);
-      // Aquí puedes realizar otras operaciones con los productos
-    } catch (error) {
-      console.error('Error al obtener productos:', error.message);
-    }
-  }
-  // Llama a la función para obtener los productos
-  obtenerProductos();
-
-useEffect(() => {
-//  RNIap.initConnection(); // Inicializar react-native-iap
-}, []);
-
-async function handlePurchase() {
-  try {
-    const purchase = await requestPurchase('your_subscription_sku_here');
-    // Aquí puedes manejar la compra exitosa, por ejemplo, guardar el estado de la suscripción en tu aplicación.
-    console.log('Compra exitosa:', purchase);
-  } catch (error) {
-    console.log('Suscripcion fallida')
-
-    // Aquí puedes manejar errores, por ejemplo, mostrar un mensaje de error al usuario.
-    console.error('Error en la compra:', error);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////  
-*/
+////
 useEffect(() => {
   // Recupera el estado del CheckBox desde AsyncStorage
   const getRememberDataSetting = async () => {
@@ -122,6 +92,7 @@ useEffect(() => {
     } catch (error) {
       console.error('Error al recuperar el estado del CheckBox:', error);
     }
+  // console.log('exp: '+exp);
   };
 
   getRememberDataSetting();
@@ -152,7 +123,6 @@ const loadConfig = async () => {
       const savedUsername = await AsyncStorage.getItem('username');
       const savedClave = await AsyncStorage.getItem('clave');
       const savedRosterData = await AsyncStorage.getItem('rosterData');
-
       if (savedUrl) {
         setUrl(savedUrl);
       }
@@ -519,27 +489,47 @@ const getColor = getColorByDate();
           `);
         }}
       />
-       {accessAllowed ? (
-        <Button
-          title="Get Roster"
-          onPress={() => {
-            webViewRef.current?.injectJavaScript(`
-              var roster = document.querySelector('table[id="_tabRoster"]');
-              if (roster) {
-                var rosterHTML = roster.outerHTML;
-                window.ReactNativeWebView.postMessage(rosterHTML);
-              }
-            `);
-            if (Platform.OS === 'android') {
-              ToastAndroid.show('Roster actualizado', ToastAndroid.SHORT);
-            } else {
-         //     Toast.show('Roster actualizado', { duration: Toast.durations.SHORT });
-            }
-          }}
-        />
-      ) : (
-        <Text>Acceso restringido. Han pasado más de 1 mes desde el registro.</Text>
-      )}
+    
+  <Button
+    title="Get Roster"
+    onPress={() => {
+
+      const expFecha = new Date(vencimiento);
+      const diaExp = expFecha.getDate();
+      const mesExp = expFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
+      const anioExp = expFecha.getFullYear();
+      const fechaCaducidad = `${diaExp} / ${mesExp} / ${anioExp}`;
+  
+      const hoyFecha = new Date(hoy);
+      const diaHoy = hoyFecha.getDate();
+      const mesHoy = hoyFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
+      const anioHoy = hoyFecha.getFullYear();
+      const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
+  
+      console.log('fecha inicio: ' + fechaInicio);
+      console.log('fecha caducidad: ' + fechaCaducidad);
+      
+      if(vencimiento > hoy){
+      webViewRef.current?.injectJavaScript(`
+        var roster = document.querySelector('table[id="_tabRoster"]');
+        if (roster) {
+          var rosterHTML = roster.outerHTML;
+          window.ReactNativeWebView.postMessage(rosterHTML);
+        }
+      `);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Roster actualizado', ToastAndroid.SHORT);
+      } else {
+        // Toast.show('Roster actualizado', { duration: Toast.durations.SHORT });
+      }
+    }else{
+      Alert.alert('Mes de prueba finalizado');
+      console.log('USUARIO VENCIDO')
+    }
+    }
+  }
+  />
+
       <Button
         title="Ver Roster"
         onPress={() => {
@@ -559,9 +549,9 @@ const getColor = getColorByDate();
     
     <View style={Styles.contenedorTitulo}>
     <Text style={Styles.titulo}>
-      ROSTER  
+     Sky Roster  
     </Text>
-    <Ionicons name="md-arrow-down-circle-sharp" size={34} color="white" />
+    <MaterialCommunityIcons name="airplane-marker" size={38} color="white" style={{paddingVertical:0, alignSelf:'center', marginTop:10}} />
     </View>
 
     <ScrollView style={{ flex: 1 }}>
@@ -856,7 +846,9 @@ const getColor = getColorByDate();
    
     <TouchableOpacity 
     style={{flex:1}}
-    onPress={()=>{setShowModal(false), navigation.navigate('Login') }}
+    onPress={()=>{setShowModal(false),
+       navigation.navigate('Login')
+       }}
            >
       <View style={Styles.botonesMenuInferior}>
       <Feather name="settings" size={20} color="white" />
@@ -885,7 +877,7 @@ const getColor = getColorByDate();
             });
           }}
           onLoadEnd={() => {
-            console.log('WebView cargado con éxito');
+          //  console.log('WebView cargado con éxito');
             webViewRef.current?.injectJavaScript(`
               var roster = document.querySelector('table[id="_tabRoster"]');
               if (roster) {
@@ -952,7 +944,6 @@ const Styles = StyleSheet.create({
     borderWidth:2,
     borderColor:'#b0c4de',
     borderBottomColor:'lime',
-
   },
   Modal:{
     borderWidth:3,
@@ -966,8 +957,8 @@ const Styles = StyleSheet.create({
     textAlign: 'center',
     textAlignVertical: 'center',
     fontSize: 34,
-    textTransform: 'uppercase',
-    padding: 2,
+    textTransform: 'none',
+    padding: 6,
     paddingVertical: 4,
     borderRadius: 20,
    // marginHorizontal: '12%',
