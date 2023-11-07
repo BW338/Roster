@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, ImageBackground, TouchableOpacity, TouchableNativeFeedback, Animated, Dimensions, StyleSheet,TextInput } from 'react-native';
-import { SimpleLineIcons } from '@expo/vector-icons';
+import { View, ImageBackground, TouchableOpacity, TouchableWithoutFeedback, Animated, Dimensions, StyleSheet, TouchableNativeFeedback } from 'react-native';
+import { Fontisto } from '@expo/vector-icons';
 import { FIREBASE_AUTH } from "../FirebaseConfig";
 import Login from "./Login";
 
 const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
 
-
 export default function Splash({ navigation }) {
   const [fadeAnim] = useState(new Animated.Value(0));
- 
-  
+
   const Ingresar = () => {
-    navigation.navigate('Roster'); 
+    navigation.navigate('Roster');
   }
 
   useEffect(() => {
@@ -28,46 +26,46 @@ export default function Splash({ navigation }) {
   }, []);
 
   return (
-    <ImageBackground source={require('../assets/roster.jpg')} style={Styles.fondo}>
-      
-     
-      <View style={{ flex: 1,
-                     justifyContent: 'flex-end',
-                     marginBottom:10,
-                     alignItems: 'center',
-                      }}>
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <TouchableNativeFeedback>
-            <SimpleLineIcons name="plane" size={28} color="white"
-              title='Ingresar'
-              background={TouchableNativeFeedback.Ripple('#ffffff', false)}
-              onPress={Ingresar}
-            />
-          </TouchableNativeFeedback>
-        </Animated.View>
-        <TouchableOpacity onPress={Ingresar}>
-          <Animated.Text style={{ color: 'white', fontSize: 24, opacity: fadeAnim }}>Ingresar</Animated.Text>
-        </TouchableOpacity>
-      </View>
-    </ImageBackground>
+    <TouchableWithoutFeedback onPress={Ingresar}>
+      <ImageBackground source={require('../assets/R-splash6.jpg')} style={Styles.fondo}>
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          marginBottom: 10,
+          alignItems: 'center',
+          borderBottomRightRadius: 80,
+        }}>
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <TouchableNativeFeedback>
+              <Fontisto name="cloudflare" size={120} color="white" style={{ paddingVertical: 0, alignSelf: 'center', marginTop: 3 }}
+                title='Ingresar'
+                background={TouchableNativeFeedback.Ripple('#ffffff', false)}
+                onPress={Ingresar}
+              />
+            </TouchableNativeFeedback>
+          </Animated.View>
+          <TouchableOpacity onPress={Ingresar}>
+            <Animated.Text style={{ color: 'white', fontSize: 32, opacity: fadeAnim }}>Ingresar</Animated.Text>
+          </TouchableOpacity>
+        </View>
+      </ImageBackground>
+    </TouchableWithoutFeedback>
   );
 }
 
 const Styles = StyleSheet.create({
-    fondo: {
-        //borderWidth:2,
-        //borderColor:"red",
-        flex:1,
-        marginTop:margenSup,
-        resizeMode:'cover',
-        justifyContent:'center',
-        alignItems:'center',
-        
-      },
-      inputs:{
-        color:'white',
-        fontSize:24,
-        textAlign:'center',
-        
-      }
+  fondo: {
+    //borderWidth:2,
+    //borderColor:"red",
+    flex: 1,
+    marginTop: margenSup,
+    resizeMode: 'cover',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputs: {
+    color: 'white',
+    fontSize: 24,
+    textAlign: 'center',
+  }
 })

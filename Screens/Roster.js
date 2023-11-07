@@ -1,40 +1,147 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions,Toast, ToastAndroid, Platform, TouchableOpacity,StyleSheet} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions,Linking, ToastAndroid, Platform, TouchableOpacity,StyleSheet} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomCheckBox from '../Routes/Components/Checkbox';
+import 'react-native-get-random-values';
 import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
 import { useNavigation } from '@react-navigation/native';
 import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
 import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig"; // Asegúrate de importar el objeto auth de Firebase adecuadamente
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { loadMercadoPago } from "@mercadopago/sdk-js";
+import { openBrowserAsync } from "expo-web-browser";
+import {MercadoPagoConfig, MercadoPago, Preference, Payment} from 'mercadopago';
+import { createPaymentPreference } from './preference'; // Importa el módulo
+import { v4 as uuidv4 } from "uuid";
+import { initMercadoPago } from '@mercadopago/sdk-react'
+
+<StatusBar style="light" backgroundColor="blue" />
+
+initMercadoPago('TEST-9f36b450-ebaf-4a5a-bfc3-981426947d3f');
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
 const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
 
-
 export default function Roster({ route }) {
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [clave, setClave] = useState('');
   const webViewRef = useRef(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(true);
   const [rosterData, setRosterData] = useState(null);
-  const today = new Date();
-  const [crewData, setCrewData] = useState([]);
   const [selectedFlight, setSelectedFlight] = useState(null);
-  const [accessAllowed, setAccessAllowed] = useState(true); // Estado para controlar si se permite el acceso
-  const auth = FIREBASE_AUTH;
   const [showPassword, setShowPassword] = useState(false);
   const [rememberData, setRememberData] = useState(false);
-  const { userEmail } = route.params;
+  const { userEmail } = route.params || { userEmail: 'valor_predeterminado' };
   const navigation = useNavigation();
   const hoy = Date.now();
   const [vencimiento, setVencimiento] = useState('');
-//////////////////////
+
+  const expFecha = new Date(vencimiento);
+  const diaExp = expFecha.getDate();
+  const mesExp = expFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
+  const anioExp = expFecha.getFullYear();
+  const fechaCaducidad = `${diaExp} / ${mesExp} / ${anioExp}`;
+
+  const hoyFecha = new Date(hoy);
+  const diaHoy = hoyFecha.getDate();
+  const mesHoy = hoyFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
+  const anioHoy = hoyFecha.getFullYear();
+  const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
+
+  const esVigente = vencimiento > hoy;
+
+/////////////////////////////////////////////
+const [preferenceId, setPreferenceId] = useState(null);
+
+const client = new MercadoPagoConfig({accessToken: 'TEST-8872934073691114-102708-919bcfc23b61a1ffa548c081b4b245c9-127395250'});
+
+const preference = new Preference(client);
+preference.create({
+  'items': [
+     {
+     'title': 'Producto prueba',
+     'quantity': 1,
+     'currency_id': 'ARS',
+     'unit_price': 1000
+     }
+  ]
+}).then((result) => console.log(result))
+    .catch((error) => console.log(error));
+
+/*
 useEffect(() => {
+  const fetchPreferenceId = async () => {
+    try {
+      const preferenceId = await createPaymentPreference();
+      console.log('Preference ID:', preferenceId);
+    } catch (error) {
+      console.error('Error al obtener el Preference ID:', error);
+    }
+  };
+
+  fetchPreferenceId();
+}, []);
+*/
+
+useEffect(() => {
+  
+  const createPreference = async () => {
+    try {
+      
+      const client = new MercadoPagoConfig({accessToken: 'TEST-8872934073691114-102708-919bcfc23b61a1ffa548c081b4b245c9-127395250',
+      });
+
+      const preference = new Preference(client);
+      console.log('preference2:', JSON.stringify(preference, null, 2));
+
+      const createResult = await preference.create({
+        items: [
+          {
+            title: 'Mi producto',
+            quantity: 1,
+            currency_id: 'ARS',
+            unit_price: 1000,
+          },
+        ], 
+      });
+
+      console.log('createResult: '+ createResult)
+
+      if (createResult && createResult.id) {
+        // Almacena el ID de la preferencia en el estado
+        setPreferenceId(createResult.id);
+        console.log('-----'+ createResult);
+      } else {
+        console.error('La respuesta de createResult no contiene un ID válido.');
+      }
+    } catch (error) {
+      console.error('Error al crear la preferencia:', error);
+    }
+  };
+
+  createPreference();
+}, []);
+
+
+
+openWebBrowser = async () => {
+  try {
+    // Utiliza el ID de preferencia almacenado en el estado
+    const url = `https://www.mercadopago.com/checkout/v1/redirect?preference_id=${preferenceId}`;
+    await openBrowserAsync(url);
+  } catch (error) {
+    console.error('Error al abrir el navegador:', error);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////////
+useEffect(() => {
+ 
   const fetchUserData = async () => {
     const usersCollection = collection(FIREBASE_FIRESTORE, "users");
     const queryByEmail = query(usersCollection, where("email", "==", userEmail));
@@ -57,26 +164,11 @@ useEffect(() => {
       console.error("Error al consultar los datos del usuario:", error);
     }       
   };
-  console.log('HOY: '+ hoy)
+//  console.log('HOY: '+ hoy)
 
   fetchUserData();
 }, [userEmail]);
 
-///////////////////////////////////////////////////////////////
-
-const isUserActive = () => {
-    if (!userData) return "Cargando...";
-
-    if (vencimiento > hoy) {
-      console.log('VIGENTE')
-      return "Vigente";
-    } else {
-      console.log('VENCIDO')
-      return "Vencido";
-    }
-  };
-
-////
 useEffect(() => {
   // Recupera el estado del CheckBox desde AsyncStorage
   const getRememberDataSetting = async () => {
@@ -250,9 +342,12 @@ const loadConfig = async () => {
             const minutosFormateados = minutosDecimal < 10 ? `0${minutosDecimal.toFixed(0)}` : minutosDecimal.toFixed(0);
           
             const TiempoDeVuelo = `${horasFormateadas}:${minutosFormateados}`;
-          // Agregar el tiempo de vuelo al objeto rowData
+          
+            // Agregar el tiempo de vuelo al objeto rowData
           rowData.TiempoDeVuelo = TiempoDeVuelo;
-          }              
+         
+
+        }              
   
           
           
@@ -264,7 +359,6 @@ const loadConfig = async () => {
   
     return extractedData;
   };
-  
   
   // Función auxiliar para verificar si una fila es una fila vacía de tripulación
   const isEmptyCrewRow = (rowData) => {
@@ -280,7 +374,6 @@ const loadConfig = async () => {
       (!rowData.Crew || rowData.Crew.length === 0)
     );
   };
-  
   
   const groupDataByDay = (data) => {
     const groupedData = {};
@@ -490,26 +583,30 @@ const getColor = getColorByDate();
         }}
       />
     
-  <Button
-    title="Get Roster"
+     {esVigente ? (
+	  <Button
+         title="Get Roster"
     onPress={() => {
 
-      const expFecha = new Date(vencimiento);
-      const diaExp = expFecha.getDate();
-      const mesExp = expFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
-      const anioExp = expFecha.getFullYear();
-      const fechaCaducidad = `${diaExp} / ${mesExp} / ${anioExp}`;
-  
-      const hoyFecha = new Date(hoy);
-      const diaHoy = hoyFecha.getDate();
-      const mesHoy = hoyFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
-      const anioHoy = hoyFecha.getFullYear();
-      const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
-  
-      console.log('fecha inicio: ' + fechaInicio);
-      console.log('fecha caducidad: ' + fechaCaducidad);
-      
-      if(vencimiento > hoy){
+    //  console.log('fecha inicio: ' + fechaInicio);
+    //  console.log('fecha caducidad: ' + fechaCaducidad);
+
+  //ENTRADA A PLAN CON LAS CREDENCIALES CARGADAS
+    webViewRef.current?.injectJavaScript(`
+            var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
+            var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
+            if (usernameInput && passwordInput) {
+              usernameInput.value = '${username}';
+              passwordInput.value = '${clave}';
+              var loginButton = document.querySelector('input[id="_login_btnLogin"]');
+              if (loginButton) {
+                loginButton.click();
+              }
+            }
+          `); 
+    /////////////////////////////////////////////
+    
+    ///////LEYENDO DATOS DEL PLAN
       webViewRef.current?.injectJavaScript(`
         var roster = document.querySelector('table[id="_tabRoster"]');
         if (roster) {
@@ -517,19 +614,34 @@ const getColor = getColorByDate();
           window.ReactNativeWebView.postMessage(rosterHTML);
         }
       `);
+    /////////////////////////////////////////////////////////////  
       if (Platform.OS === 'android') {
-        ToastAndroid.show('Roster actualizado', ToastAndroid.SHORT);
+        ToastAndroid.show('Actualizando Roster...', ToastAndroid.SHORT);
       } else {
         // Toast.show('Roster actualizado', { duration: Toast.durations.SHORT });
       }
-    }else{
-      Alert.alert('Mes de prueba finalizado');
-      console.log('USUARIO VENCIDO')
-    }
-    }
+     // Antes de llamar a setShowModal(true), usa setTimeout
+    setTimeout(() => {
+    setShowModal(true);
+   }, 1500); // 3000 milisegundos (3 segundos)
   }
+}
+  
   />
+      ) : (
+  <View>
+       <Button title="Open Browser" onPress={openWebBrowser} />
 
+       
+      <Button
+      title="Ver Roster"
+      onPress={() => {
+      // navigation.navigate('RosterScreen', { groupedRosterData, currentDate })
+      setShowModal(true);
+      }} />
+  </View>
+      )} 
+      
       <Button
         title="Ver Roster"
         onPress={() => {
@@ -551,11 +663,12 @@ const getColor = getColorByDate();
     <Text style={Styles.titulo}>
      Sky Roster  
     </Text>
-    <MaterialCommunityIcons name="airplane-marker" size={38} color="white" style={{paddingVertical:0, alignSelf:'center', marginTop:10}} />
+    <Fontisto name="cloudflare" size={42} color="white"  style={{paddingVertical:0, alignSelf:'center', marginTop:3}} />
     </View>
 
     <ScrollView style={{ flex: 1 }}>
       {groupedRosterData.map((group, index) => (
+      
         <View 
         style={Styles.Modal}
         key={index}>
@@ -569,8 +682,13 @@ const getColor = getColorByDate();
             fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
             color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
             backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
-          }}>{formatDate(group.date)}</Text>
+          }}>
+          
+   
+        {formatDate(group.date)}</Text>
           {group.items.map((item, itemIndex) => {
+
+
             const hasDepArr = item.Dep && item.Arr;
             const hasETD = item.ETD;
             const hasETA = item.ETA;
@@ -579,6 +697,19 @@ const getColor = getColorByDate();
             const hasCheckOut = !!item.CheckOut && item.NroVuelo !== 'GUA';
             const hasNroVuelo = item.NroVuelo && item.NroVuelo !== ' ';
             const hasCrew = item.Crew && item.Crew.length > 0; // Verifica si hay información de tripulación
+
+            const checkInTime = new Date(item.CheckIn);
+            const checkOutTime = new Date(item.CheckOut);
+            const timeDifference = checkOutTime - checkInTime;
+            
+            // Calcular horas y minutos
+            const hours = Math.floor(timeDifference / (60 * 60 * 1000));
+            const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
+      
+            console.log('CH: '+checkInTime)
+
+            // Crear el formato "hh:mm"
+            const tsv = `${hours}:${minutes}`;
 
             // Comprueba si tienes datos válidos antes de renderizar la sección
           if (!item.CheckIn &&
@@ -603,7 +734,7 @@ const getColor = getColorByDate();
             ) {
               return null; // Evitar renderizar elementos vacíos
             }
-    
+
             return (
               <View
                 key={itemIndex}
@@ -622,7 +753,7 @@ const getColor = getColorByDate();
                   margin:0,
                 }}
               >
-                 {/* Columna izquierda: datos del vuelo */} 
+                 {/* Columna: datos del vuelo */} 
                  {(!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name))) && (
  
                   <View style={Styles.datosActividad} 
@@ -745,7 +876,7 @@ const getColor = getColorByDate();
                   <View style={Styles.datosSecundarios}>
                   {hasCheckIn && (
                         <View style={Styles.checkInContainer}>
-                          <FontAwesome5 name="chevron-circle-right" size={18} color="black" />
+                          <FontAwesome5 name="chevron-circle-right" size={18} color="red" />
                         <Text style={Styles.CheckIn}>
                           {formatCheckIn(item.CheckIn)}
                         </Text>
@@ -791,13 +922,18 @@ const getColor = getColorByDate();
                         <Text style={Styles.CheckOut}>
                             Checkout  {extractTime(item.CheckOut)}
                         </Text>
-                        <FontAwesome5 name="chevron-circle-left" size={18} color="black" />
+                        <FontAwesome5 name="chevron-circle-left" size={18} color="green" />                     
+                        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+                        TSV:{tsv}
+                        </Text>
                       </View>
+                      
                     )}    
                   </View>     
                   </View>)}
                 {/* Columna información de la tripulación */}
      {hasCrew && (
+          
   <View style={Styles.menuTotalCrew}>
     <TouchableOpacity onPress={() => toggleCrewVisibility(itemIndex, item.ETD)}>
       
@@ -810,6 +946,7 @@ const getColor = getColorByDate();
                       : getColor(group.date),}}>
       
       <Ionicons name="people" size={22} color="#191970" />
+     
       <Text style={{ fontSize: 16,
                      marginLeft:4,
                      color:'#191970'}}>
@@ -819,19 +956,24 @@ const getColor = getColorByDate();
       <MaterialCommunityIcons name={selectedFlight && selectedFlight.index === itemIndex && selectedFlight.date === item.ETD
               ? 'menu-up' 
               : 'menu-down'} size={24} color="#191970" />
+
+              
       </View>
 
     {selectedFlight && selectedFlight.index === itemIndex && 
      selectedFlight.date === item.ETD && hasCrew && (
-        <View style={Styles.manuCrew}>
+        <View style={Styles.menuCrew}>
         {item.Crew.map((crewMember, crewIndex) => (
           <Text key={crewIndex} style={{ fontSize: 14 }}>
             {crewMember.Role}: {crewMember.Name}
           </Text>
         ))}
+        <Text>XXXXXXXXXXXX</Text>
       </View>
     )}
         </TouchableOpacity>
+       
+     
 
   </View>
 )}
@@ -846,9 +988,7 @@ const getColor = getColorByDate();
    
     <TouchableOpacity 
     style={{flex:1}}
-    onPress={()=>{setShowModal(false),
-       navigation.navigate('Login')
-       }}
+    onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
            >
       <View style={Styles.botonesMenuInferior}>
       <Feather name="settings" size={20} color="white" />
@@ -894,6 +1034,7 @@ const getColor = getColorByDate();
     </View>
   );
 }
+
 
 const Styles = StyleSheet.create({
 
@@ -978,7 +1119,8 @@ const Styles = StyleSheet.create({
     alignContent:'center', 
     justifyContent:'center'
   },
-  manuCrew:{
+  menuCrew:{
+    flexDirection:'column',
     fontWeight:'bold',
     alignContent: 'center',
     backgroundColor: '#f5fffa',
@@ -1073,4 +1215,4 @@ const Styles = StyleSheet.create({
   textShadowOffset: { width: 0, height: 0 },
   textShadowRadius: 2,
   },
-  });
+});

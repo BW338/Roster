@@ -11,18 +11,33 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "example.com": {
+              "NSIncludesSubdomains": true,
+              "NSTemporaryExceptionAllowsInsecureHTTPLoads": true,
+              "NSTemporaryExceptionMinimumTLSVersion": "TLSv1.1"
+            }
+          }
+        }
+      }
     },
     "android": {
+      "versionCode": 10,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.guido1988.Roster"
+      "config": {
+        "cleartext": {
+          "usesCleartextTraffic": true
+        }
+      },
+      "package": "com.guido1988.Roster.apk"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,6 +46,26 @@
       "eas": {
         "projectId": "70034bc8-0b9d-4510-b3d2-be2294d966e6"
       }
-    }
+    },
+    "plugins": [
+      ["expo-build-properties", {
+        "android": {
+          "usesCleartextTraffic": true
+        },
+        "ios": {
+          "infoPlist": {
+            "NSAppTransportSecurity": {
+              "NSExceptionDomains": {
+                "example.com": {
+                  "NSIncludesSubdomains": true,
+                  "NSTemporaryExceptionAllowsInsecureHTTPLoads": true,
+                  "NSTemporaryExceptionMinimumTLSVersion": "TLSv1.1"
+                }
+              }
+            }
+          }
+        }
+      }]
+    ]
   }
 }

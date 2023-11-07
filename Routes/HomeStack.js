@@ -4,7 +4,6 @@ import Splash from '../Screens/Splash';
 import Roster from '../Screens/Roster';
 import App from '../App';
 import Login from "../Screens/Login";
-
 const Stack = createNativeStackNavigator();
 
 const HomeStack = () => {
@@ -12,13 +11,14 @@ const HomeStack = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Login" // ruta inicial
+        initialRouteName='Roster' // ruta inicial
         screenOptions={{ headerShown: false }} 
       >
         <Stack.Screen name="App" component={App} />
         <Stack.Screen name="Splash" component={Splash} />
         <Stack.Screen name="Roster" component={Roster} />
         <Stack.Screen name="Login" component={Login} />
+
 
 
       </Stack.Navigator>

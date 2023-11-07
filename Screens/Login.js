@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { addDoc, collection, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { NetInfo } from 'react-native';
 
 LogBox.ignoreLogs(['@firebase/auth']);
 
@@ -50,11 +51,17 @@ const Login = () => {
   };
 
   const isEmailValid = (email) => {
+    // Elimina espacios en blanco al inicio y al final del correo electrónico
+    const trimmedEmail = email.trim();
+    
+    // Verifica si el correo electrónico sin espacios al final coincide con el formato válido
     const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
-    return emailRegex.test(email);
+    return emailRegex.test(trimmedEmail) && email === trimmedEmail;
   };
+  
 
   const navigation = useNavigation();
+
 
   const signIn = async () => {
     setLoading(true);
@@ -76,7 +83,7 @@ const Login = () => {
       }
     } catch (error) {
       console.log(error);
-      alert('Usuario o contraseña incorrectos, revisa y vuelve a ingresar. ' + error.message);
+      alert('Usuario o contraseña incorrectos, revisa y vuelve a ingresar. ');
     } finally {
       setLoading(false);
     }
@@ -139,6 +146,8 @@ const Login = () => {
       alert('Error al enviar el correo para restablecer la contraseña: ' + error.message);
     }
   };
+ 
+  /////////////////////////////
   return (
     <ImageBackground source={require('../assets/login.jpg')} style={Styles.fondo}>
       <View style={Styles.container}>
