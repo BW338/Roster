@@ -10,16 +10,12 @@ import { useNavigation } from '@react-navigation/native';
 import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
 import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig"; // Asegúrate de importar el objeto auth de Firebase adecuadamente
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { loadMercadoPago } from "@mercadopago/sdk-js";
 import { openBrowserAsync } from "expo-web-browser";
-import {MercadoPagoConfig, MercadoPago, Preference, Payment} from 'mercadopago';
-import { createPaymentPreference } from './preference'; // Importa el módulo
-import { v4 as uuidv4 } from "uuid";
-import { initMercadoPago } from '@mercadopago/sdk-react'
+import { handleIntegrationMP } from '../MP/preference'; // Importa el módulo
+import * as WebBrowser from 'expo-web-browser';
 
 <StatusBar style="light" backgroundColor="blue" />
 
-initMercadoPago('TEST-9f36b450-ebaf-4a5a-bfc3-981426947d3f');
 
 const currentDate = new Date(); // Obtiene la fecha actual
 
@@ -56,86 +52,10 @@ export default function Roster({ route }) {
   const esVigente = vencimiento > hoy;
 
 /////////////////////////////////////////////
-const [preferenceId, setPreferenceId] = useState(null);
-
-const client = new MercadoPagoConfig({accessToken: 'TEST-8872934073691114-102708-919bcfc23b61a1ffa548c081b4b245c9-127395250'});
-
-const preference = new Preference(client);
-preference.create({
-  'items': [
-     {
-     'title': 'Producto prueba',
-     'quantity': 1,
-     'currency_id': 'ARS',
-     'unit_price': 1000
-     }
-  ]
-}).then((result) => console.log(result))
-    .catch((error) => console.log(error));
-
-/*
-useEffect(() => {
-  const fetchPreferenceId = async () => {
-    try {
-      const preferenceId = await createPaymentPreference();
-      console.log('Preference ID:', preferenceId);
-    } catch (error) {
-      console.error('Error al obtener el Preference ID:', error);
-    }
-  };
-
-  fetchPreferenceId();
-}, []);
-*/
-
-useEffect(() => {
-  
-  const createPreference = async () => {
-    try {
-      
-      const client = new MercadoPagoConfig({accessToken: 'TEST-8872934073691114-102708-919bcfc23b61a1ffa548c081b4b245c9-127395250',
-      });
-
-      const preference = new Preference(client);
-      console.log('preference2:', JSON.stringify(preference, null, 2));
-
-      const createResult = await preference.create({
-        items: [
-          {
-            title: 'Mi producto',
-            quantity: 1,
-            currency_id: 'ARS',
-            unit_price: 1000,
-          },
-        ], 
-      });
-
-      console.log('createResult: '+ createResult)
-
-      if (createResult && createResult.id) {
-        // Almacena el ID de la preferencia en el estado
-        setPreferenceId(createResult.id);
-        console.log('-----'+ createResult);
-      } else {
-        console.error('La respuesta de createResult no contiene un ID válido.');
-      }
-    } catch (error) {
-      console.error('Error al crear la preferencia:', error);
-    }
-  };
-
-  createPreference();
-}, []);
-
-
-
-openWebBrowser = async () => {
-  try {
-    // Utiliza el ID de preferencia almacenado en el estado
-    const url = `https://www.mercadopago.com/checkout/v1/redirect?preference_id=${preferenceId}`;
-    await openBrowserAsync(url);
-  } catch (error) {
-    console.error('Error al abrir el navegador:', error);
+ const handleBuy = async ()=>{
+  const data = handleIntegrationMP()
+  if(!data){
+    return console.log('--ERROR--')
   }
 };
 
@@ -585,7 +505,7 @@ const getColor = getColorByDate();
     
      {esVigente ? (
 	  <Button
-         title="Get Roster"
+         title="Descargar Roster "
     onPress={() => {
 
     //  console.log('fecha inicio: ' + fechaInicio);
@@ -630,7 +550,7 @@ const getColor = getColorByDate();
   />
       ) : (
   <View>
-       <Button title="Open Browser" onPress={openWebBrowser} />
+       <Button title="Obtener acceso anual" onPress={handleBuy} />
 
        
       <Button
@@ -641,14 +561,6 @@ const getColor = getColorByDate();
       }} />
   </View>
       )} 
-      
-      <Button
-        title="Ver Roster"
-        onPress={() => {
-        // navigation.navigate('RosterScreen', { groupedRosterData, currentDate })
-           setShowModal(true);
-        }}
-      />
 
 <Modal
   visible={showModal}
@@ -706,7 +618,7 @@ const getColor = getColorByDate();
             const hours = Math.floor(timeDifference / (60 * 60 * 1000));
             const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
       
-            console.log('CH: '+checkInTime)
+          //  console.log('CH: '+checkInTime)
 
             // Crear el formato "hh:mm"
             const tsv = `${hours}:${minutes}`;
