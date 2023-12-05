@@ -12,7 +12,8 @@ import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig"; // Asegú
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { openBrowserAsync } from "expo-web-browser";
 import { handleIntegrationMP } from '../MP/preference'; // Importa el módulo
-import * as WebBrowser from 'expo-web-browser';
+import moment from 'moment';
+import { ACCESS_TOKEN } from "../MP/config.json";
 
 <StatusBar style="light" backgroundColor="blue" />
 
@@ -52,12 +53,69 @@ export default function Roster({ route }) {
   const esVigente = vencimiento > hoy;
 
 /////////////////////////////////////////////
- const handleBuy = async ()=>{
-  const data = handleIntegrationMP()
-  if(!data){
-    return console.log('--ERROR--')
+const handleBuy = async () => {
+  try {
+    const { init_point, preference_id } = await handleIntegrationMP();
+
+    if (!init_point || !preference_id) {
+      return console.log('--ERROR--');
+    }
+
+    openBrowserAsync(init_point)
+      .then(() => {
+        const pollPaymentStatus = async () => {
+          try {
+            const paymentStatus = await checkPaymentStatus(preference_id);
+      //      console.log('Estado del pago:', paymentStatus);
+      //      console.log('pref.ID:', preference_id);
+
+            if (paymentStatus === 'approved') {
+              console.log('Pago aprobado');
+              // Realizar acciones después de un pago exitoso...
+            } else if (paymentStatus === 'rejected') {
+              console.log('Pago rechazado');
+              // Realizar acciones si el pago fue rechazado...
+            } else {
+              console.log('El pago aún está pendiente');
+              // Puedes seguir sondeando el estado del pago...
+            }
+          } catch (error) {
+            console.error('Error al verificar el estado del pago:', error);
+          }
+        };
+
+        setTimeout(pollPaymentStatus, 5000); // Iniciar sondeo después de un breve retraso
+      })
+      .catch(error => console.error('Error al abrir el navegador:', error));
+  } catch (error) {
+    console.error('Error al iniciar el proceso de compra:', error);
   }
 };
+
+const checkPaymentStatus = async (preference_id) => {
+  console.log('preference_id:', preference_id);
+  try {
+    const response = await fetch(`https://api.mercadopago.com/v1/payments/${preference_id}`, {
+      method: 'GET', // Utilizar el método GET para obtener el estado del pago
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',    
+      },
+    }); 
+
+    console.log('Response:', response); // Solo para depuración para ver la respuesta completa
+
+    const paymentInfo = await response.json();
+    console.log('Payment Info:', JSON.stringify(paymentInfo, null, 2));
+    console.log('Status:', response.status);
+    return { paymentInfo, status: response.status };
+  } catch (error) {
+    console.error('Error al verificar el estado del pago:', error);
+    return 'error';
+  }
+};
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////
 useEffect(() => {
@@ -84,7 +142,6 @@ useEffect(() => {
       console.error("Error al consultar los datos del usuario:", error);
     }       
   };
-//  console.log('HOY: '+ hoy)
 
   fetchUserData();
 }, [userEmail]);
@@ -186,13 +243,11 @@ const loadConfig = async () => {
   
     const $ = cheerio.load(html);
     const extractedData = [];
-    let lastETD = null; // Para mantener un seguimiento del último ETD encontrado
+    let lastETD = null;
   
-    // Selecciona y extrae filas con las clases "RosterOddRow" y "RosterEvenRow" dentro de la tabla HTML
     $('table[id="_tabRoster"] tr').each((index, element) => {
       const rowData = {};
   
-      // Verifica si la fila tiene la clase 'TWBorderBottom'
       const hasTWBorderBottom = $(element).hasClass('TWBorderBottom');
   
       if (!$(element).find('td.RosterRowActivity').length && hasTWBorderBottom) {
@@ -214,7 +269,6 @@ const loadConfig = async () => {
           rowData.ETD = lastETD;
         }
   
-        // Verifica si esta fila tiene información de tripulación y extrae esa información
         const crewTable = $(element).find('table[id^="cob_"]');
         if (crewTable.length > 0) {
           const crewData = [];
@@ -232,54 +286,54 @@ const loadConfig = async () => {
         }
   
         if (!isEmptyCrewRow(rowData)) {
-          // Calcular la diferencia entre ETD y ETA y agregarla como FT
           const ETD = rowData.ETD;
           const ETA = rowData.ETA;
   
           if (ETD && ETA) {
-            // Extraer las horas y minutos de ETD
             const ETDTimeParts = ETD.slice(-5).split(":");
             const ETDHours = parseInt(ETDTimeParts[0], 10);
             const ETDMinutes = parseInt(ETDTimeParts[1], 10);
-          
-            // Extraer las horas y minutos de ETA
+  
             const ETATimeParts = ETA.slice(-5).split(":");
             const ETAHours = parseInt(ETATimeParts[0], 10);
             const ETAMinutes = parseInt(ETATimeParts[1], 10);
-          
-            // Calcular la diferencia en minutos entre ETD y ETA
+  
             const diffInMinutes = (ETAHours * 60 + ETAMinutes) - (ETDHours * 60 + ETDMinutes);
-          
-            // Asegurarse de que FT sea siempre positivo
-            var FT = Math.abs(diffInMinutes / 60);
-          
-            // Extraer la parte entera y decimal de FT
+            const FT = Math.abs(diffInMinutes / 60);
             const horas = Math.floor(FT);
             const minutosDecimal = (FT - horas) * 60;
-          
-            // Formatear las horas y minutos en HH:mm
+  
             const horasFormateadas = horas < 10 ? `0${horas}` : horas.toString();
             const minutosFormateados = minutosDecimal < 10 ? `0${minutosDecimal.toFixed(0)}` : minutosDecimal.toFixed(0);
-          
-            const TiempoDeVuelo = `${horasFormateadas}:${minutosFormateados}`;
-          
-            // Agregar el tiempo de vuelo al objeto rowData
-          rowData.TiempoDeVuelo = TiempoDeVuelo;
-         
-
-        }              
   
-          
-          
+            const TiempoDeVuelo = `${horasFormateadas}:${minutosFormateados}`;
+            rowData.TiempoDeVuelo = TiempoDeVuelo;
+          }
+  
           extractedData.push(rowData);
-
         }
       }
     });
   
     return extractedData;
-  };
+  }; 
   
+  const handleMessage = (event) => {
+    const datos = event.nativeEvent.data;
+    if (vencimiento > hoy) {
+      console.log('ACTUALIZANDO ROSTER')
+      const processedData = processHTML(datos);
+      setRosterData(processedData);
+
+      AsyncStorage.setItem('rosterData', JSON.stringify(processedData))
+        .then(() => {
+          // ... Resto del código ...
+        })
+        .catch((error) => {
+          console.error('Error al guardar RosterData:', error);
+        });
+    }
+  };
   // Función auxiliar para verificar si una fila es una fila vacía de tripulación
   const isEmptyCrewRow = (rowData) => {
     return (
@@ -295,57 +349,54 @@ const loadConfig = async () => {
     );
   };
   
-  const groupDataByDay = (data) => {
-    const groupedData = {};
-  
-    if (Array.isArray(data)) {
-      data.forEach((item) => {
-        const cadena = item.ETD;
-        const match = cadena.match(/\d{2}[A-Z]{3}/);
-        if (match) {
-          const dateKey = match[0];
-          if (!groupedData[dateKey]) {
-            groupedData[dateKey] = {
-              date: dateKey,
-              items: [],
-            };
+ const groupDataByDay = (data) => {
+  const groupedData = {};
+
+  if (Array.isArray(data)) {
+    data.forEach((item) => {
+      const cadena = item.ETD;
+      const match = cadena.match(/\d{2}[A-Z]{3}/);
+
+      if (match) {
+        const dateKey = match[0];
+
+        if (!groupedData[dateKey]) {
+          groupedData[dateKey] = {
+            date: dateKey,
+            items: [],
+            totalTSV: 0,
+          };
+        }
+        groupedData[dateKey].items.push(item);
+
+        if (item.CheckIn || item.CheckOut) {
+  //      console.log(`LOG  Date Key: ${dateKey}`);
+          if (item.CheckIn) {
+  //        console.log(`LOG  CheckIn: ${item.CheckIn}`);
           }
-  
-          groupedData[dateKey].items.push(item);
+          if (item.CheckOut) {
+  //        console.log(`LOG  CheckOut: ${item.CheckOut}`);
+          }
         }
-      });
-    }
-  
-    // Convertir el objeto agrupado en un arreglo de objetos
+      }
+    });
+
     const groupedDataArray = Object.values(groupedData);
-  
+
+    groupedDataArray.forEach((group) => {
+      const totalHours = Math.floor(group.totalTSV / (60 * 60 * 1000));
+      const totalMinutes = Math.floor((group.totalTSV % (60 * 60 * 1000)) / (60 * 1000));
+      const totalTSV = `${totalHours.toString().padStart(2, '0')}:${totalMinutes.toString().padStart(2, '0')}`;
+      group.tsv = totalTSV;
+    });
+
     return groupedDataArray;
-  };
-  const groupedRosterData = groupDataByDay(rosterData);
-  
-  const groupCrewDataByDay = (data) => {
-    const groupedCrewData = {};
-  
-    if (Array.isArray(data)) {
-      data.forEach((item) => {
-        const dateKey = item.ETD; // Utiliza el campo ETD como clave de fecha
-  
-        if (!groupedCrewData[dateKey]) {
-          groupedCrewData[dateKey] = [];
-        }
-  
-        groupedCrewData[dateKey].push(item);
-      });
-    }
-  
-    // Convertir el objeto agrupado en un arreglo de objetos
-    const groupedCrewDataArray = Object.entries(groupedCrewData).map(([date, crew]) => ({
-      date,
-      crew,
-    }));
-  
-    return groupedCrewDataArray;
-  };
+  }
+
+  return [];
+};
+
+const groupedRosterData = groupDataByDay(rosterData);
   
   const formatDate = (dateStr) => {
     // Mapa de nombres de meses abreviados a números de mes
@@ -412,8 +463,124 @@ const loadConfig = async () => {
       return colorMap[date];
     };
   };
-  
+  const addHttpToUrl = (inputUrl) => {
+    const lowercasedUrl = inputUrl.toLowerCase();
+    if (!lowercasedUrl.startsWith("http://") && !lowercasedUrl.startsWith("https://")) {
+      return `http://${inputUrl}`;
+    }
+    return inputUrl;
+  };
 const getColor = getColorByDate();
+
+function calculateDayDifference(items) {
+  let totalDifference = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const currentItem = items[i];
+
+    if (currentItem.CheckIn && currentItem.CheckOut) {
+      const checkInTime = parseTime(currentItem.CheckIn);
+      const checkOutTime = parseTime(currentItem.CheckOut);
+
+   //   console.log(`In Hora: ${currentItem.CheckIn} - Out Hora: ${currentItem.CheckOut}`);
+
+      if (checkInTime && checkOutTime) {
+        const timeDifference = checkOutTime.getTime() - checkInTime.getTime();
+        totalDifference += timeDifference;
+      //  console.log(`Difference: ${timeDifference / (60 * 1000)} minutes`);
+      }
+    }
+  }
+
+  const hours = Math.floor(totalDifference / (60 * 60 * 1000));
+  const minutes = Math.floor((totalDifference % (60 * 60 * 1000)) / (60 * 1000));
+ // console.log(`Total Difference: ${totalDifference}`);
+ // console.log(`Total Difference Formatted: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+// Función para convertir una cadena de tiempo en un objeto Date
+function parseTime(timeString) {
+  const time = timeString.slice(-5);
+  const timeParts = time.split(':');
+  const hours = parseInt(timeParts[0], 10);
+  const minutes = parseInt(timeParts[1], 10);
+
+  if (!isNaN(hours) && !isNaN(minutes)) {
+    const currentDate = new Date();
+    currentDate.setHours(hours);
+    currentDate.setMinutes(minutes);
+    return currentDate;
+  } else {
+    return null;
+  }
+}
+
+function convertirHoraAMilisegundos(horaString) {
+  const [hour, minute] = horaString.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hour);
+  date.setMinutes(minute);
+  date.setSeconds(0); // Establecemos los segundos en 0
+
+  return date.getTime(); // Obtenemos los milisegundos
+}
+
+const calculateTotalDifferenceForEachGroup = (groupedRosterData) => {
+  const updatedGroupedData = groupedRosterData.map((group) => {
+    const totalDifference = calculateDayDifference(group.items);
+    return {
+      ...group,
+      tsv: totalDifference,
+    };
+  });
+
+  return updatedGroupedData;
+};
+
+// Llamar a la función y obtener los resultados actualizados
+const groupedRosterDataWithTotalDifference = calculateTotalDifferenceForEachGroup(groupedRosterData);
+
+function calculateDayDifference(items) {
+  let totalDifference = 0;
+
+  if (items.length > 1) {
+    for (let i = 0; i < items.length; i++) {
+      const currentItem = items[i];
+
+      if (currentItem.CheckIn && currentItem.CheckOut) {
+        const checkInTime = parseTime(currentItem.CheckIn);
+        const checkOutTime = parseTime(currentItem.CheckOut);
+
+        if (checkInTime && checkOutTime) {
+          const timeDifference = checkOutTime.getTime() - checkInTime.getTime();
+          totalDifference += timeDifference;
+        }
+      }
+    }
+  } else if (items.length === 1) {
+    const singleItem = items[0];
+    if (singleItem.CheckIn && singleItem.CheckOut) {
+      const checkInTime = parseTime(singleItem.CheckIn);
+      console.log(checkInTime)
+      const checkOutTime = parseTime(singleItem.CheckOut);
+
+      if (checkInTime && checkOutTime) {
+        const timeDifference = checkOutTime.getTime() - checkInTime.getTime();
+        totalDifference += timeDifference;
+      }
+    }
+  }
+
+  const hours = Math.floor(totalDifference / (60 * 60 * 1000));
+  const minutes = Math.floor((totalDifference % (60 * 60 * 1000)) / (60 * 1000));
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+// Mostrar los resultados actualizados en el registro
+groupedRosterDataWithTotalDifference.forEach((group, index) => {
+ // console.log(`Grupo ${index + 1}: TSV - ${group.tsv}`);
+
+});
 
   return (
     <View style={Styles.container}>
@@ -429,13 +596,37 @@ const getColor = getColorByDate();
 
     <View style={[Styles.inputContainer, Styles.grayBackground]}>
       <Text style={Styles.label}>Usuario</Text>
+     <View style={{flexDirection:'row', alignItems:'center'}}> 
       <TextInput
-        style={Styles.input}
-        placeholder="Legajo..."
+      style={{ ...Styles.input, width: '38%' }}
+      placeholder="Legajo..."
         value={username}
         onChangeText={(text) => setUsername(text)}
       />
+           <View style={{ marginLeft: 20 }}>
+           
+        <Button
+        title="Ingresar"
+        onPress={() => {
+          webViewRef.current?.injectJavaScript(`
+            var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
+            var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
+            if (usernameInput && passwordInput) {
+              usernameInput.value = '${username}';
+              passwordInput.value = '${clave}';
+              var loginButton = document.querySelector('input[id="_login_btnLogin"]');
+              if (loginButton) {
+                loginButton.click();
+              }
+            }
+          `);
+        }
+      } 
+
+      /> 
       
+      </View>
+     </View> 
       <Text style={Styles.label}>Contraseña</Text>
      
       <View style={Styles.passwordContainer}>
@@ -484,33 +675,13 @@ const getColor = getColorByDate();
       </View>
 
     </View>
-
-      <Button
-        title="Ingresar"
-        onPress={() => {
-          webViewRef.current?.injectJavaScript(`
-            var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
-            var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
-            if (usernameInput && passwordInput) {
-              usernameInput.value = '${username}';
-              passwordInput.value = '${clave}';
-              var loginButton = document.querySelector('input[id="_login_btnLogin"]');
-              if (loginButton) {
-                loginButton.click();
-              }
-            }
-          `);
-        }}
-      />
     
      {esVigente ? (
 	  <Button
-         title="Descargar Roster "
+    title="Descargar Roster "
     onPress={() => {
-
     //  console.log('fecha inicio: ' + fechaInicio);
     //  console.log('fecha caducidad: ' + fechaCaducidad);
-
   //ENTRADA A PLAN CON LAS CREDENCIALES CARGADAS
     webViewRef.current?.injectJavaScript(`
             var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
@@ -550,18 +721,15 @@ const getColor = getColorByDate();
   />
       ) : (
   <View>
-       <Button title="Obtener acceso anual" onPress={handleBuy} />
-
-       
-      <Button
+       <Button title="Obtener acceso anual" onPress={handleBuy} />      
+  </View>
+      )} 
+ <Button
       title="Ver Roster"
       onPress={() => {
       // navigation.navigate('RosterScreen', { groupedRosterData, currentDate })
       setShowModal(true);
       }} />
-  </View>
-      )} 
-
 <Modal
   visible={showModal}
   animationType="slide"
@@ -583,7 +751,7 @@ const getColor = getColorByDate();
       
         <View 
         style={Styles.Modal}
-        key={index}>
+        key={index}>     
           <Text style={{
             textAlign: 'left',
             paddingHorizontal: 4,
@@ -595,10 +763,18 @@ const getColor = getColorByDate();
             color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
             backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
           }}>
-          
-   
-        {formatDate(group.date)}</Text>
-          {group.items.map((item, itemIndex) => {
+
+        {formatDate(group.date)}
+        {group.items.length > 1 && (
+        <Text style={{ fontWeight: 'bold' }}>
+            || TSV: {calculateDayDifference(group.items)}
+        </Text>
+      )}
+        </Text>
+        
+        
+
+          {group.items.map((item, itemIndex,) => {
 
 
             const hasDepArr = item.Dep && item.Arr;
@@ -610,19 +786,60 @@ const getColor = getColorByDate();
             const hasNroVuelo = item.NroVuelo && item.NroVuelo !== ' ';
             const hasCrew = item.Crew && item.Crew.length > 0; // Verifica si hay información de tripulación
 
-            const checkInTime = new Date(item.CheckIn);
-            const checkOutTime = new Date(item.CheckOut);
-            const timeDifference = checkOutTime - checkInTime;
-            
-            // Calcular horas y minutos
-            const hours = Math.floor(timeDifference / (60 * 60 * 1000));
-            const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
+         //   console.log("extractedTIme"+extractTime(item.CheckOut))
+      //////TSV
+        var OutMS = 0;
+        var InMS = 0;
+        const CheckInHora = item.CheckIn.slice(-5);
+        InMS = convertirHoraAMilisegundos(CheckInHora);
+
+      if (hasCheckIn) {
+//        console.log('In Hora:', CheckInHora);
+        
+      //   InMS = convertirHoraAMilisegundos(CheckInHora);
+//        console.log('InMS: '+InMS); // Resultado en milisegundos
+
+      }
+      if(hasCheckOut){
+        const CheckOutHora = item.CheckOut.slice(-5);
+//        console.log('Out Hora:', CheckOutHora);
+
+         OutMS = convertirHoraAMilisegundos(CheckOutHora);
+//       console.log(OutMS); // Resultado en milisegundos      
+//       console.log('*****: '+ (OutMS-InMS) )
+        var Dif = OutMS-InMS
+        const fecha = new Date(Dif);
+        const horas = fecha.getHours().toString().padStart(2, '0');
+        const minutos = fecha.getMinutes().toString().padStart(2, '0');
+        const horaEnFormatoHHMM = `${horas}:${minutos}`;
+        
+//        console.log('IN-MS '+ InMS);
+//        console.log('OUT-MS '+ OutMS); 
+//       console.log('///////'+ horaEnFormatoHHMM); // Resultado en formato HH:MM
+      }
+       
+// Ejemplo de uso para item.CheckIn y item.CheckOut
+const checkInTime = parseTime(item.CheckIn);
+const checkOutTime = parseTime(item.CheckOut);
+
+// Calcula la diferencia de tiempo
+if (checkInTime && checkOutTime) {
+  const timeDifference = checkOutTime - checkInTime;
+  
+  // Obtiene horas y minutos de la diferencia
+  const hours = Math.floor(timeDifference / (60 * 60 * 1000));
+  const minutes = Math.floor((timeDifference % (60 * 60 * 1000)) / (60 * 1000));
+
+  // Formatea la diferencia de tiempo en "HH:MM"
+  var tsv = (OutMS - InMS);
+
+// console.log('TSV: '+ tsv)
+  // Ahora puedes mostrar 'tsv' en tu interfaz donde lo necesites
+}
       
-          //  console.log('CH: '+checkInTime)
 
-            // Crear el formato "hh:mm"
-            const tsv = `${hours}:${minutes}`;
 
+          ///////////////////
             // Comprueba si tienes datos válidos antes de renderizar la sección
           if (!item.CheckIn &&
               (!item.NroVuelo || item.NroVuelo.trim() === '') &&
@@ -664,7 +881,7 @@ const getColor = getColorByDate();
                   marginBottom: 0,
                   margin:0,
                 }}
-              >
+              > 
                  {/* Columna: datos del vuelo */} 
                  {(!hasCrew || (hasCrew && item.Crew.every(crewMember => !crewMember.Name))) && (
  
@@ -788,11 +1005,12 @@ const getColor = getColorByDate();
                   <View style={Styles.datosSecundarios}>
                   {hasCheckIn && (
                         <View style={Styles.checkInContainer}>
-                          <FontAwesome5 name="chevron-circle-right" size={18} color="red" />
+                          <FontAwesome5 name="chevron-circle-right" size={18} color="#556b2f" />
                         <Text style={Styles.CheckIn}>
                           {formatCheckIn(item.CheckIn)}
                         </Text>
-                        </View> 
+                        
+                        </View>
                   )}
                    {hasAvion && (
                       <View style={{flex:0.5,
@@ -834,13 +1052,16 @@ const getColor = getColorByDate();
                         <Text style={Styles.CheckOut}>
                             Checkout  {extractTime(item.CheckOut)}
                         </Text>
-                        <FontAwesome5 name="chevron-circle-left" size={18} color="green" />                     
-                        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+                        <FontAwesome5 name="chevron-circle-left" size={18} color="#00008b" />  
+      
+                         {/* <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
                         TSV:{tsv}
-                        </Text>
+                        </Text>   */}
                       </View>
-                      
-                    )}    
+                    )    
+                    
+                  }           
+                    
                   </View>     
                   </View>)}
                 {/* Columna información de la tripulación */}
@@ -880,7 +1101,6 @@ const getColor = getColorByDate();
             {crewMember.Role}: {crewMember.Name}
           </Text>
         ))}
-        <Text>XXXXXXXXXXXX</Text>
       </View>
     )}
         </TouchableOpacity>
@@ -916,18 +1136,9 @@ const getColor = getColorByDate();
         <WebView
           isVisiblle={false}
           ref={webViewRef}
-          source={{ uri: url }}
+          source={{ uri: addHttpToUrl(url) }}
           style={{ flex: 1 }}
-          onMessage={(event) => {
-            const datos = event.nativeEvent.data;
-            const processedData = processHTML(datos);
-            setRosterData(processedData);
-
-            AsyncStorage.setItem('rosterData', JSON.stringify(processedData)).then(() => {
-            }).catch((error) => {
-              console.error('Error al guardar RosterData:', error);
-            });
-          }}
+          onMessage={handleMessage}
           onLoadEnd={() => {
           //  console.log('WebView cargado con éxito');
             webViewRef.current?.injectJavaScript(`
@@ -1076,11 +1287,12 @@ const Styles = StyleSheet.create({
   //  alignSelf:'flex-end',
   },
   checkInContainer:{
-    borderWidth:1,
-    padding:6,
-    borderRadius:30,
+    borderWidth:2,
+    borderColor:'#556b2f',
+    paddingHorizontal:3,
+    borderRadius:10,
+    backgroundColor:'#fffacd',
     marginLeft:8,
-    paddingBottom:4,
     marginTop:4,
     alignSelf:'center',
     flexDirection:'row',
@@ -1088,12 +1300,13 @@ const Styles = StyleSheet.create({
     alignItems:'center',
   },
   checkOutContainer: {
-    borderWidth:1,
-    padding:6,
+    borderWidth:2,
+    paddingHorizontal:3,
+    borderColor:'#00008b',
     marginTop:4,
-    borderRadius:30,
+    borderRadius:10,
+    backgroundColor:'#fffacd',
     marginRight:8,
-    paddingTop:4,
     alignSelf:'center',
     flexDirection:'row',
     alignContent:'center',
