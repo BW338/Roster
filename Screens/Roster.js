@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions,Linking, ToastAndroid, Platform, TouchableOpacity,StyleSheet} from 'react-native';
+import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions, ToastAndroid, Platform,
+         TouchableOpacity,StyleSheet,Image, useFocusEffect } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomCheckBox from '../Routes/Components/Checkbox';
 import 'react-native-get-random-values';
 import { WebView } from 'react-native-webview';
 import cheerio from 'cheerio';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused  } from '@react-navigation/native';
 import { Fontisto, FontAwesome, FontAwesome5, MaterialIcons, Ionicons, Feather, MaterialCommunityIcons  } from '@expo/vector-icons';
 import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig"; // Asegúrate de importar el objeto auth de Firebase adecuadamente
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs,updateDoc  } from "firebase/firestore";
 import { openBrowserAsync } from "expo-web-browser";
 import { handleIntegrationMP } from '../MP/preference'; // Importa el módulo
-import moment from 'moment';
-import { ACCESS_TOKEN } from "../MP/config.json";
 
 <StatusBar style="light" backgroundColor="blue" />
 
@@ -29,6 +28,12 @@ export default function Roster({ route }) {
   const [clave, setClave] = useState('');
   const webViewRef = useRef(null);
   const [showModal, setShowModal] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [userDataModal, setUserDataModal] = useState(false);
+  const [borrar, setBorrar] = useState(false);
+  const [userEXP, setUserExp] = useState('');
+  const [exp, setExp] = useState('Sin datos');
+  const [checkboxValue, setCheckboxValue] = useState(false);
   const [rosterData, setRosterData] = useState(null);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -42,7 +47,8 @@ export default function Roster({ route }) {
   const diaExp = expFecha.getDate();
   const mesExp = expFecha.getMonth() + 1; // Los meses en JavaScript comienzan en 0, por lo que sumamos 1
   const anioExp = expFecha.getFullYear();
-  const fechaCaducidad = `${diaExp} / ${mesExp} / ${anioExp}`;
+  const fechaCaducidad = `${diaExp}/${mesExp}/${anioExp}`;
+  const [vencido, setVencido] = useState(fechaCaducidad);
 
   const hoyFecha = new Date(hoy);
   const diaHoy = hoyFecha.getDate();
@@ -52,7 +58,12 @@ export default function Roster({ route }) {
 
   const esVigente = vencimiento > hoy;
 
+
+/// 
+
 /////////////////////////////////////////////
+const HEROKU_SERVER_URL = 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com'; // Reemplaza con la URL de tu servidor de Heroku
+// Función para realizar la compra y gestionar el sondeo
 const handleBuy = async () => {
   try {
     const { init_point, preference_id } = await handleIntegrationMP();
@@ -61,91 +72,142 @@ const handleBuy = async () => {
       return console.log('--ERROR--');
     }
 
-    openBrowserAsync(init_point)
-      .then(() => {
-        const pollPaymentStatus = async () => {
-          try {
-            const paymentStatus = await checkPaymentStatus(preference_id);
-      //      console.log('Estado del pago:', paymentStatus);
-      //      console.log('pref.ID:', preference_id);
+    const paymentURL = `${HEROKU_SERVER_URL}/webhook-mercadopago`;
 
-            if (paymentStatus === 'approved') {
-              console.log('Pago aprobado');
-              // Realizar acciones después de un pago exitoso...
-            } else if (paymentStatus === 'rejected') {
-              console.log('Pago rechazado');
-              // Realizar acciones si el pago fue rechazado...
-            } else {
-              console.log('El pago aún está pendiente');
-              // Puedes seguir sondeando el estado del pago...
+    openBrowserAsync(init_point, paymentURL)
+      .then(() => {
+        let pollingInterval = setInterval(async () => {
+          try {
+            const paymentData = await obtenerIDPagoAprobado();
+
+            if (paymentData && paymentData.id) {
+              idpago = paymentData.id; // Actualiza idpago con el nuevo ID del pago aprobado
+              clearInterval(pollingInterval);
             }
           } catch (error) {
-            console.error('Error al verificar el estado del pago:', error);
+            clearInterval(pollingInterval);
+          //  console.error('Error during payment polling:', error);
           }
-        };
+        }, 5000); // Intervalo de sondeo en milisegundos (5 segundos en este ejemplo)
+        
+        navigation.navigate('Login')
 
-        setTimeout(pollPaymentStatus, 5000); // Iniciar sondeo después de un breve retraso
       })
-      .catch(error => console.error('Error al abrir el navegador:', error));
+      .catch(error => console.error('Error opening the browser:', error));
   } catch (error) {
-    console.error('Error al iniciar el proceso de compra:', error);
+    console.error('Error starting the purchase process:', error);
   }
+  setModalVisible(false)
 };
 
-const checkPaymentStatus = async (preference_id) => {
-  console.log('preference_id:', preference_id);
+const handleCheckboxChange = (newValue) => {
+  setCheckboxValue(newValue);
+};
+
+const borrarCuenta = async () => {
+  
+  console.log('********'+ userEmail)
+  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+
+  setUsername('');
+  setClave('');
+  userEmail== ''
+
+  setBorrar(false)
+  setUserDataModal(false)
+
+
   try {
-    const response = await fetch(`https://api.mercadopago.com/v1/payments/${preference_id}`, {
-      method: 'GET', // Utilizar el método GET para obtener el estado del pago
-      headers: {
-        Authorization: `Bearer ${ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',    
-      },
-    }); 
+    const querySnapshot = await getDocs(queryByEmail);
 
-    console.log('Response:', response); // Solo para depuración para ver la respuesta completa
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach(async (doc) => {
+        const docRef = doc.ref; // Utiliza doc.ref para obtener la referencia del documento
+        await updateDoc(docRef, {
+          expirationDate: 0
+        });
 
-    const paymentInfo = await response.json();
-    console.log('Payment Info:', JSON.stringify(paymentInfo, null, 2));
-    console.log('Status:', response.status);
-    return { paymentInfo, status: response.status };
+        console.log("Suscripción cancelada para el usuario con correo electrónico:", userEmail);
+      });
+    } else {
+      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+    }
   } catch (error) {
-    console.error('Error al verificar el estado del pago:', error);
-    return 'error';
+    console.error("Error al cancelar la suscripción del usuario:", error);
   }
-};
+    navigation.navigate('Login', { newEmail: '', newPassword: '' });
 
+};  
 
-
-////////////////////////////////////////////////////////////////////////////////////
 useEffect(() => {
  
-  const fetchUserData = async () => {
-    const usersCollection = collection(FIREBASE_FIRESTORE, "users");
-    const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+const fetchUserData = async () => {
+      const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+      const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
-    try {
-      const querySnapshot = await getDocs(queryByEmail);
+      try {
+        const querySnapshot = await getDocs(queryByEmail);
 
-      if (!querySnapshot.empty) {
-        querySnapshot.forEach((doc) => {
-          const userData = doc.data();
-          console.log("Datos del usuario:", userData);
-          const exp = doc.data().expirationDate;
-          console.log('EXP: '+ exp)
-          setVencimiento(exp)
-        });
-      } else {
-        console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
-      }
-    } catch (error) {
-      console.error("Error al consultar los datos del usuario:", error);
-    }       
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach((doc) => {
+            const userData = doc.data();
+            console.log("Datos del usuario:", userData);
+            const exp = doc.data().expirationDate;
+          //  console.log('////////' +fechaCaducidad)
+          // console.log('EXP: '+ exp)
+            
+            const timestamp = exp;
+            const fecha = new Date(timestamp);
+            setExp(fecha);
+            console.log("Caduca el *"+ fecha); 
+            setVencimiento(exp)
+            setVencido(fechaCaducidad);
+      
+      setTimeout(() => {
+        if(fechaCaducidad == "31/12/1969"){
+        //  console.log('////' + fechaCaducidad)
+          setVencido('sin suscricion')
+        //  console.log('----' + fechaCaducidad)
+       }else{
+            setVencido(fechaCaducidad)
+            console.log('*****' + fechaCaducidad)
+
+       }
+      }, 3000);
+
+          });
+        } else {
+          console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+        }
+      } catch (error) {
+        console.error("Error al consultar los datos del usuario:", error);
+      }       
+};
+
+fetchUserData();
+}, [userEmail]);
+  
+/////////////
+const ejecutarFuncionX = async () => {
+    // Lógica de tu función 
+    console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
+    
+    
+    // Llamada a fetchUserData
+ //   await fetchUserData();
   };
 
-  fetchUserData();
-}, [userEmail]);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      ejecutarFuncionX();
+    });
 
+    ejecutarFuncionX(); // Ejecutar la función x al montar la pantalla
+
+    return unsubscribe;
+  }, [navigation]);
+/////////
 useEffect(() => {
   // Recupera el estado del CheckBox desde AsyncStorage
   const getRememberDataSetting = async () => {
@@ -161,7 +223,6 @@ useEffect(() => {
     } catch (error) {
       console.error('Error al recuperar el estado del CheckBox:', error);
     }
-  // console.log('exp: '+exp);
   };
 
   getRememberDataSetting();
@@ -470,6 +531,7 @@ const groupedRosterData = groupDataByDay(rosterData);
     }
     return inputUrl;
   };
+
 const getColor = getColorByDate();
 
 function calculateDayDifference(items) {
@@ -562,7 +624,7 @@ function calculateDayDifference(items) {
     const singleItem = items[0];
     if (singleItem.CheckIn && singleItem.CheckOut) {
       const checkInTime = parseTime(singleItem.CheckIn);
-      console.log(checkInTime)
+//      console.log(checkInTime)
       const checkOutTime = parseTime(singleItem.CheckOut);
 
       if (checkInTime && checkOutTime) {
@@ -583,6 +645,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 });
 
   return (
+
     <View style={Styles.container}>
     <View style={Styles.inputContainer}>
       <Text style={Styles.label}>Ingresa la dirección Web de tu plan de vuelo:</Text>
@@ -596,13 +659,19 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 
     <View style={[Styles.inputContainer, Styles.grayBackground]}>
       <Text style={Styles.label}>Usuario</Text>
-     <View style={{flexDirection:'row', alignItems:'center'}}> 
+     <View style={{flexDirection:'row',
+                  alignItems:'center', 
+                  alignContent:'space-between'}}> 
       <TextInput
       style={{ ...Styles.input, width: '38%' }}
       placeholder="Legajo..."
         value={username}
         onChangeText={(text) => setUsername(text)}
       />
+
+      <View style={{flexDirection:'row',
+                    justifyContent:'space-between',
+                  }}>
            <View style={{ marginLeft: 20 }}>
            
         <Button
@@ -621,14 +690,29 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
             }
           `);
         }
-      } 
+      } /> 
 
-      /> 
-      
-      </View>
-     </View> 
-      <Text style={Styles.label}>Contraseña</Text>
+
+    </View>
+
+    <TouchableOpacity
+            style={{ 
+            marginLeft:6,  
+            backgroundColor: 'brown', // Cambia el color a tu preferencia
+            paddingVertical: 6,
+            borderRadius: 4,
+            marginVertical:0,}}
+            onPress={()=>setUserDataModal(true)}>
+
+            <Text style={Styles.registerButtonText}>Cuenta</Text>
+
+          </TouchableOpacity>
+         
+    </View>   
+  </View> 
      
+      <Text style={Styles.label}>Contraseña</Text>
+  
       <View style={Styles.passwordContainer}>
        <View style={{flexDirection:'row',
                      justifyContent:'center',
@@ -680,9 +764,8 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 	  <Button
     title="Descargar Roster "
     onPress={() => {
-    //  console.log('fecha inicio: ' + fechaInicio);
-    //  console.log('fecha caducidad: ' + fechaCaducidad);
-  //ENTRADA A PLAN CON LAS CREDENCIALES CARGADAS
+ 
+      //ENTRADA A PLAN CON LAS CREDENCIALES CARGADAS
     webViewRef.current?.injectJavaScript(`
             var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
             var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
@@ -721,7 +804,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
   />
       ) : (
   <View>
-       <Button title="Obtener acceso anual" onPress={handleBuy} />      
+       <Button title="Obtener acceso anual" onPress={() => setModalVisible(true)} />      
   </View>
       )} 
  <Button
@@ -730,6 +813,65 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
       // navigation.navigate('RosterScreen', { groupedRosterData, currentDate })
       setShowModal(true);
       }} />
+  <Modal
+      animationType="slide"
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={() => {
+        setModalVisible(!modalVisible);
+      }}
+    >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+        <View style={{ backgroundColor: '#f8f8ff', padding: 20, borderRadius: 10, width: '80%' , borderWidth:2}}>
+          
+          <View style={{padding:6,
+                        borderWidth:1,
+                        borderRadius:12,
+                        marginBottom:18,
+                        borderStyle:'dotted'}}>
+                      
+           <Text style={{ marginBottom: 16, fontSize:20 }}>
+            Por favor, asegúrate de que tu Email registrado en Sky Roster coincida con el Email de tu cuenta de MercadoPago. Esto es necesario para poder verificar la transacción.
+           </Text>
+
+           <CustomCheckBox label="Entendido" checked={checkboxValue} onChange={handleCheckboxChange} />
+           </View>  
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Button title="Cerrar" onPress={() => setModalVisible(false)} />           
+           <TouchableOpacity
+           onPress={handleBuy}
+           style={{ opacity: checkboxValue ? 1 : 0.5 }} 
+           disabled={!checkboxValue}>
+           <View style={{borderRadius:8, borderWidth:2, borderColor:'#00bfff'}}>
+            <Image source={require('../assets/Boton-mercadopago1.png')}
+            
+            />
+           </View>
+           </TouchableOpacity> 
+          </View>
+        </View>
+      </View>
+    </Modal>
+
+    <Modal
+      visible={borrar}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => {
+        setBorrar(!borrar);
+      }}
+    >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+        <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: '80%' }}>
+          <Text style={{ marginBottom: 10 }}>¿Seguro que deseas borrar tu cuenta? Estas eliminando tus datos ingresados y tu suscripcion.</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Button title="No" onPress={()=>setBorrar(false)} />
+            <Button title="Borrar cuenta" onPress={borrarCuenta} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+
 <Modal
   visible={showModal}
   animationType="slide"
@@ -1132,6 +1274,36 @@ if (checkInTime && checkOutTime) {
 </View>
 </Modal>
 
+<Modal
+      animationType="slide"
+      transparent={true}
+      visible={userDataModal}
+      onRequestClose={() => {
+        setUserDataModal(false);
+      }}
+    >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+        <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: '80%' }}>
+          <Text style={{ marginBottom: 10,
+                         fontSize:16,
+                         fontWeight:'bold',
+           }}>
+            Datos de tu cuenta:
+          </Text>
+           <Text style={{fontSize:16}}>Usuario: {userEmail} </Text>
+           <Text style={{fontSize:16}}>Vigencia: {fechaCaducidad} </Text>
+
+
+          <View style={{ flexDirection: 'column', justifyContent: 'space-between', marginTop:20 }}>
+            <Button title="Borrar cuenta" onPress={() => setBorrar(true)} />
+            <Button title="Cerrar" onPress={() => setUserDataModal(false)} />
+
+
+          </View>
+        </View>
+      </View>
+    </Modal>   
+
       <View style={Styles.webview}>
         <WebView
           isVisiblle={false}
@@ -1339,5 +1511,12 @@ const Styles = StyleSheet.create({
   textShadowColor: '#b0c4de',
   textShadowOffset: { width: 0, height: 0 },
   textShadowRadius: 2,
+  },
+  registerButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+    paddingHorizontal:4,
+    
   },
 });

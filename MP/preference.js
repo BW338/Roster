@@ -12,8 +12,13 @@ export const handleIntegrationMP = async () => {
         category_id: "Suscripcion",
         quantity: 1,
         currency_id: "$",
-        unit_price: 1,
+        unit_price: 0.10,
       },
+
+  /*    {
+        notification_url: 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com/webhook-mercadopago',
+      },*/
+
     ],
   };
 
@@ -28,7 +33,7 @@ export const handleIntegrationMP = async () => {
     });
 
     const data = await response.json();
-    console.log('DATA:', JSON.stringify(data, null, 2));
+  //  console.log('DATA:', JSON.stringify(data, null, 2));
   //  const preference_id = data.id
     return { init_point: data.init_point,  preference_id: data.id};
   } catch (error) {

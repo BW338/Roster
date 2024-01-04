@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions, LogBox } from 'react-native';
+import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions, LogBox, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig";
 import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { KeyboardAvoidingView } from "react-native";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { addDoc, collection, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,11 +16,32 @@ const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055;
 const margenInf = windowHeight * 0.055;
 
-const Login = () => {
+const Login = ({route }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = FIREBASE_AUTH;
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      console.log('Entrando al useEffect')
+      const { newEmail, newPassword } = route.params || {};
+      console.log('newEmail: '+ newEmail)
+      console.log('newPassword: '+ newPassword)
+
+      if (newEmail == '' && newPassword == '') {
+        console.log('IsFocused')
+        Alert.alert('Tu cuenta ah sido borrada')
+
+        setTimeout(() => {
+          setEmail(newEmail);
+          setPassword(newPassword);
+          console.log('Actualizando datos')
+        }, 2000);
+      }
+    }
+  }, [isFocused, route.params]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,10 +79,8 @@ const Login = () => {
     const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
     return emailRegex.test(trimmedEmail) && email === trimmedEmail;
   };
-  
 
   const navigation = useNavigation();
-
 
   const signIn = async () => {
     setLoading(true);
@@ -118,8 +137,45 @@ const Login = () => {
         createdAt: currentDateMillis, // Almacena la fecha de creación como milisegundos desde la época
         expirationDate: expirationDateMillis, // Almacena la fecha de vencimiento como milisegundos desde la época
       };
+
+      useEffect(() => {
+ 
+        const fetchUserData = async () => {
+            const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+            const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+        
+            try {
+              const querySnapshot = await getDocs(queryByEmail);
+        
+              if (!querySnapshot.empty) {
+                querySnapshot.forEach((doc) => {
+                  const userData = doc.data();
+                  console.log("Datos del usuario:", userData);
+                  const exp = doc.data().expirationDate;
+                //  console.log('////////' +fechaCaducidad)
+                // console.log('EXP: '+ exp)
+                  
+                  const timestamp = exp;
+                  const fecha = new Date(timestamp);
+                  setExp(fecha);
+                  console.log("Caduca el *"+ fecha); 
+                  setVencimiento(exp)
+                  setUserExp(fechaCaducidad)
+                });
+              } else {
+                console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+              }
+            } catch (error) {
+              console.error("Error al consultar los datos del usuario:", error);
+            }       
+          };
+        
+          fetchUserData();
+        }, [userEmail]);
+
+
       
-      console.log(new Date(currentDateMillis))
+    //  console.log(new Date(currentDateMillis))
       console.log(new Date(expirationDateMillis))
       
 
@@ -220,19 +276,33 @@ const Styles = StyleSheet.create({
     borderRadius: 5,
   },
   loginButton: {
+    borderWidth:1,
     backgroundColor: 'blue',
     paddingVertical: 10,
     borderRadius: 5,
+    marginVertical:4,
   },
   registerButton: {
+    borderWidth:1,
     backgroundColor: 'green', // Cambia el color a tu preferencia
     paddingVertical: 10,
     borderRadius: 5,
+    marginVertical:4,
+
   },
   resetButton: {
+    borderWidth:1,
+    backgroundColor: '#778899', // Cambia el color a tu preferencia
+    paddingVertical: 10,
+    borderRadius: 5,
+    marginVertical:4,
+
+  },
+  borrarCuenta: {
     backgroundColor: 'brown', // Cambia el color a tu preferencia
     paddingVertical: 10,
     borderRadius: 5,
+    marginVertical:4,
   },
   loginButtonText: {
     color: 'white',
