@@ -42,6 +42,7 @@ export default function Roster({ route }) {
   const navigation = useNavigation();
   const hoy = Date.now();
   const [vencimiento, setVencimiento] = useState('');
+  const [esVigente, setEsVigente] = useState(false);
 
   const expFecha = new Date(vencimiento);
   const diaExp = expFecha.getDate();
@@ -56,10 +57,6 @@ export default function Roster({ route }) {
   const anioHoy = hoyFecha.getFullYear();
   const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
 
-  const esVigente = vencimiento > hoy;
-
-
-/// 
 
 /////////////////////////////////////////////
 const HEROKU_SERVER_URL = 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com'; // Reemplaza con la URL de tu servidor de Heroku
@@ -121,85 +118,145 @@ const borrarCuenta = async () => {
   try {
     const querySnapshot = await getDocs(queryByEmail);
 
+    const ahora = new Date(); // Fecha y hora actual
+    const hace24Horas = ahora.getTime() - 24 * 60 * 60 * 1000; // Resta 24 horas en milisegundos
+    const expirationDate = hace24Horas;
+
     if (!querySnapshot.empty) {
       querySnapshot.forEach(async (doc) => {
         const docRef = doc.ref; // Utiliza doc.ref para obtener la referencia del documento
         await updateDoc(docRef, {
-          expirationDate: 0
+          expirationDate: expirationDate,
+          cancelado : true
+          
         });
-
         console.log("Suscripción cancelada para el usuario con correo electrónico:", userEmail);
       });
+    
     } else {
       console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
     }
   } catch (error) {
     console.error("Error al cancelar la suscripción del usuario:", error);
   }
-    navigation.navigate('Login', { newEmail: '', newPassword: '' });
+  navigation.navigate('Login', { newEmail: '', newPassword: '' });
 
 };  
 
-useEffect(() => {
- 
 const fetchUserData = async () => {
-      const usersCollection = collection(FIREBASE_FIRESTORE, "users");
-      const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
-      try {
-        const querySnapshot = await getDocs(queryByEmail);
+  try {
+    const querySnapshot = await getDocs(queryByEmail);
 
-        if (!querySnapshot.empty) {
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            console.log("Datos del usuario:", userData);
-            const exp = doc.data().expirationDate;
-          //  console.log('////////' +fechaCaducidad)
-          // console.log('EXP: '+ exp)
-            
-            const timestamp = exp;
-            const fecha = new Date(timestamp);
-            setExp(fecha);
-            console.log("Caduca el *"+ fecha); 
-            setVencimiento(exp)
-            setVencido(fechaCaducidad);
-      
-      setTimeout(() => {
-        if(fechaCaducidad == "31/12/1969"){
-        //  console.log('////' + fechaCaducidad)
-          setVencido('sin suscricion')
-        //  console.log('----' + fechaCaducidad)
-       }else{
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        console.log("Datos del usuario:", userData);
+        const exp = doc.data().expirationDate;
+        
+        const timestamp = exp;
+        const fecha = new Date(timestamp);
+
+        setExp(fecha);
+
+        console.log("Caduca el *"+ fecha); 
+        
+        setVencimiento(exp)
+        setVencido(fechaCaducidad);
+
+        // Actualizar esVigente después de obtener los datos
+        const hoy = Date.now();
+        const vigente = exp > hoy;
+        setEsVigente(vigente);
+      /*  setTimeout(() => {
+          if(fechaCaducidad == "31/12/1969" || fechaCaducidad == '1/1/1970'){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          }
+          if(fechaCaducidad == "NaN/NaN/NaN"){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          } else {
             setVencido(fechaCaducidad)
             console.log('*****' + fechaCaducidad)
-
-       }
-      }, 3000);
-
-          });
-        } else {
-          console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
-        }
-      } catch (error) {
-        console.error("Error al consultar los datos del usuario:", error);
-      }       
+          }
+        }, 3000);
+*/
+      });
+    } else {
+      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+    }
+  } catch (error) {
+    console.error("Error al consultar los datos del usuario:", error);
+  }       
 };
 
-fetchUserData();
-}, [userEmail]);
-  
-/////////////
 const ejecutarFuncionX = async () => {
-    // Lógica de tu función 
-    console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
-    
-    
-    // Llamada a fetchUserData
- //   await fetchUserData();
-  };
+  // Lógica de tu función 
+  console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
+  //
+  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+
+  try {
+    const querySnapshot = await getDocs(queryByEmail);
+
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        console.log("Datos del usuario:", userData);
+        const exp = doc.data().expirationDate;
+        
+        const timestamp = exp;
+        const fecha = new Date(timestamp);
+
+        setExp(fecha);
+
+        console.log("Caduca el *"+ fecha); 
+        
+        setVencimiento(exp)
+        setVencido(fechaCaducidad);
+
+        // Actualizar esVigente después de obtener los datos
+        const hoy = Date.now();
+        const vigente = exp > hoy;
+        setEsVigente(vigente);
+      /*  setTimeout(() => {
+          if(fechaCaducidad == "31/12/1969" || fechaCaducidad == '1/1/1970'){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          }
+          if(fechaCaducidad == "NaN/NaN/NaN"){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          } else {
+            setVencido(fechaCaducidad)
+            console.log('*****' + fechaCaducidad)
+          }
+        }, 3000);
+*/
+      });
+    } else {
+      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+    }
+  } catch (error) {
+    console.error("Error al consultar los datos del usuario:", error);
+  }     
+  // Llamada a fetchUserData
+  await fetchUserData();
+}; 
+
+useEffect(() => {
+  // Llamada inicial a fetchUserData al montar el componente
+  ejecutarFuncionX();
+}, [userEmail]);
+
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      fetchUserData();
       ejecutarFuncionX();
     });
 
@@ -1263,12 +1320,22 @@ if (checkInTime && checkOutTime) {
     <TouchableOpacity 
     style={{flex:1}}
     onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
-           >
+      >
       <View style={Styles.botonesMenuInferior}>
       <Feather name="settings" size={20} color="white" />
-        <Text style={Styles.txBotones}>CONFIGRACION</Text>
+        <Text style={Styles.txBotones}>Configuracion</Text>
       </View>
     </TouchableOpacity>
+
+  { /* <TouchableOpacity 
+    style={{flex:1}}
+    onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
+      >
+      <View style={Styles.botonesMenuInferior}>
+      <FontAwesome name="refresh" size={20} color="white"/>
+      <Text style={Styles.txBotones}>Actualizar Roster</Text>
+      </View>
+    </TouchableOpacity>*/}
   
   </View>  
 </View>

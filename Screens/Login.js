@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions, LogBox, Alert } from 'react-native';
+import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions, LogBox, Alert, Modal} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig";
 import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { KeyboardAvoidingView } from "react-native";
-import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { addDoc, collection, serverTimestamp, doc, setDoc } from "firebase/firestore";
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-import { NetInfo } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { doc,setDoc, getDoc, collection, query, where, getDocs,updateDoc  } from "firebase/firestore";
 
 LogBox.ignoreLogs(['@firebase/auth']);
 
@@ -16,32 +13,13 @@ const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055;
 const margenInf = windowHeight * 0.055;
 
-const Login = ({route }) => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const auth = FIREBASE_AUTH;
-  const isFocused = useIsFocused();
-
-  useEffect(() => {
-    if (isFocused) {
-      console.log('Entrando al useEffect')
-      const { newEmail, newPassword } = route.params || {};
-      console.log('newEmail: '+ newEmail)
-      console.log('newPassword: '+ newPassword)
-
-      if (newEmail == '' && newPassword == '') {
-        console.log('IsFocused')
-        Alert.alert('Tu cuenta ah sido borrada')
-
-        setTimeout(() => {
-          setEmail(newEmail);
-          setPassword(newPassword);
-          console.log('Actualizando datos')
-        }, 2000);
-      }
-    }
-  }, [isFocused, route.params]);
+  const [user, setUser] = useState(null);
+  const [form, setForm] = useState(false); 
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,8 +57,10 @@ const Login = ({route }) => {
     const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
     return emailRegex.test(trimmedEmail) && email === trimmedEmail;
   };
+  
 
   const navigation = useNavigation();
+
 
   const signIn = async () => {
     setLoading(true);
@@ -90,23 +70,47 @@ const Login = ({route }) => {
         setLoading(false);
         return;
       }
-
+  
       const response = await signInWithEmailAndPassword(auth, email, password);
       const user = response.user;
-    //  console.log(response);
-      
+  
       if (user.emailVerified) {
-        navigation.navigate('Roster', { userEmail: email });
+        // Obtener datos adicionales del usuario desde Firestore
+        const userDocRef = doc(FIREBASE_FIRESTORE, 'users', user.uid);
+        const userDocSnapshot = await getDoc(userDocRef);
+  
+        if (userDocSnapshot.exists()) {
+          const userData = userDocSnapshot.data();
+          console.log('userData:', userData);
+  
+          if (userData.cancelado) {
+            // Usuario cancelado, muestra un alert
+            /*  
+            alert('Tu suscripción ha sido cancelada. Por favor, contacta al soporte para más información.');
+*/
+            console.log('Antes de avisoUsuarioBorrado');
+            avisoUsuarioBorrado();
+            console.log('Después de avisoUsuarioBorrado'); 
+
+          } else {
+            // Usuario no cancelado, navega a Roster
+            console.log('Navegando a Roster.js');
+            navigation.navigate('Roster', { userEmail: email });
+          }
+        } else {
+          console.log('No se encontraron datos adicionales para el usuario.');
+        }
       } else {
         alert('Debes verificar tu correo electrónico antes de iniciar sesión.');
       }
     } catch (error) {
       console.log(error);
-      alert('Usuario o contraseña incorrectos, revisa y vuelve a ingresar. ');
+      alert('Usuario o contraseña incorrectos, revisa y vuelve a ingresar.');
     } finally {
       setLoading(false);
     }
   };
+  
 
   const createUser = async () => {
     setLoading(true);
@@ -136,46 +140,10 @@ const Login = ({route }) => {
         email,
         createdAt: currentDateMillis, // Almacena la fecha de creación como milisegundos desde la época
         expirationDate: expirationDateMillis, // Almacena la fecha de vencimiento como milisegundos desde la época
+        cancelado: false, //Anulacion de suscripcion
       };
-
-      useEffect(() => {
- 
-        const fetchUserData = async () => {
-            const usersCollection = collection(FIREBASE_FIRESTORE, "users");
-            const queryByEmail = query(usersCollection, where("email", "==", userEmail));
-        
-            try {
-              const querySnapshot = await getDocs(queryByEmail);
-        
-              if (!querySnapshot.empty) {
-                querySnapshot.forEach((doc) => {
-                  const userData = doc.data();
-                  console.log("Datos del usuario:", userData);
-                  const exp = doc.data().expirationDate;
-                //  console.log('////////' +fechaCaducidad)
-                // console.log('EXP: '+ exp)
-                  
-                  const timestamp = exp;
-                  const fecha = new Date(timestamp);
-                  setExp(fecha);
-                  console.log("Caduca el *"+ fecha); 
-                  setVencimiento(exp)
-                  setUserExp(fechaCaducidad)
-                });
-              } else {
-                console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
-              }
-            } catch (error) {
-              console.error("Error al consultar los datos del usuario:", error);
-            }       
-          };
-        
-          fetchUserData();
-        }, [userEmail]);
-
-
       
-    //  console.log(new Date(currentDateMillis))
+      console.log(new Date(currentDateMillis))
       console.log(new Date(expirationDateMillis))
       
 
@@ -192,15 +160,81 @@ const Login = ({route }) => {
 
   const resetPassword = async () => {
     try {
-      // Envia un correo para restablecer la contraseña al usuario
-      await sendPasswordResetEmail(FIREBASE_AUTH, email);
+      // Obtener datos adicionales del usuario desde Firestore
+      const user = auth.currentUser;
+      if (!user) {
+        console.log('No hay usuario autenticado.');
+        return;
+      }
   
-      // Notificar al usuario que se ha enviado un correo para restablecer la contraseña
-      alert('Se ha enviado un correo electrónico para restablecer la contraseña. Por favor, verifica tu bandeja de entrada.');
+      const userDocRef = doc(FIREBASE_FIRESTORE, 'users', user.uid);
+      const userDocSnapshot = await getDoc(userDocRef);
+  
+      if (userDocSnapshot.exists()) {
+        const userData = userDocSnapshot.data();
+        console.log('userData:', userData);
+  
+        if (userData.cancelado) {
+          // Usuario cancelado, muestra un alert
+          avisoUsuarioBorrado();
+          console.log('Usuario cancelado. No se puede restablecer la contraseña.');
+        } else {
+          // Usuario no cancelado, enviar correo para restablecer la contraseña
+          await sendPasswordResetEmail(auth, user.email);
+          alert('Se ha enviado un correo electrónico para restablecer la contraseña. Por favor, verifica tu bandeja de entrada.');
+        }
+      } else {
+        console.log('No se encontraron datos adicionales para el usuario.');
+      }
     } catch (error) {
       console.error(error);
-      alert('Error al enviar el correo para restablecer la contraseña: ' + error.message);
+      alert('Error al verificar el usuario antes de restablecer la contraseña: ' + error.message);
     }
+  };
+  
+
+  const avisoUsuarioBorrado = () => {
+    Alert.alert(
+      'Usuario borrado',
+      'Este usuario ah sido borrado, si quiere volverlo a activar preciona activar, de lo contrario preciona cerrar',
+      [
+        {
+          text: 'Activar',
+      //FUNCION PARA REACTIVAR USUARIO////
+          onPress: async () => {
+            try {
+              // Verifica si el usuario está autenticado
+              if (auth.currentUser) {
+                const user = auth.currentUser;
+          
+                // Aquí necesitas la referencia al documento del usuario
+                const userDocRef = doc(FIREBASE_FIRESTORE, 'users', user.uid);
+          
+                // Actualiza el campo cancelado a false
+                await updateDoc(userDocRef, {
+                  cancelado: false,
+                });
+                Alert.alert('Tu usuario ah sido activado, ya podes iniciar sesion!')
+                console.log('Usuario activado correctamente.');
+              } else {
+                console.error('Usuario no autenticado.');
+              }
+            } catch (error) {
+              console.error('Error al activar el usuario:', error);
+            }
+          },
+        },
+      ////-----------------------------------------------  
+        {
+          text: 'Cerrar',
+          onPress: () => {
+            console.log('Se presionó "Cerrar"');
+          },
+          style: 'cancel',
+        },
+      ],
+      { cancelable: false }
+    );
   };
  
   /////////////////////////////
@@ -243,13 +277,13 @@ const Login = ({route }) => {
             <Text style={Styles.registerButtonText}>Olvide mi contraseña</Text>
           </TouchableOpacity>
 
+            
+
         </KeyboardAvoidingView>
       </View>
     </ImageBackground>
   );
 };
-
-
 
 const Styles = StyleSheet.create({
   fondo: {
@@ -276,33 +310,19 @@ const Styles = StyleSheet.create({
     borderRadius: 5,
   },
   loginButton: {
-    borderWidth:1,
     backgroundColor: 'blue',
     paddingVertical: 10,
     borderRadius: 5,
-    marginVertical:4,
   },
   registerButton: {
-    borderWidth:1,
     backgroundColor: 'green', // Cambia el color a tu preferencia
     paddingVertical: 10,
     borderRadius: 5,
-    marginVertical:4,
-
   },
   resetButton: {
-    borderWidth:1,
-    backgroundColor: '#778899', // Cambia el color a tu preferencia
-    paddingVertical: 10,
-    borderRadius: 5,
-    marginVertical:4,
-
-  },
-  borrarCuenta: {
     backgroundColor: 'brown', // Cambia el color a tu preferencia
     paddingVertical: 10,
     borderRadius: 5,
-    marginVertical:4,
   },
   loginButtonText: {
     color: 'white',
