@@ -987,6 +987,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 
          //   console.log("extractedTIme"+extractTime(item.CheckOut))
       //////TSV
+
         var OutMS = 0;
         var InMS = 0;
         const CheckInHora = item.CheckIn.slice(-5);
@@ -1032,7 +1033,7 @@ if (checkInTime && checkOutTime) {
   // Formatea la diferencia de tiempo en "HH:MM"
   var tsv = (OutMS - InMS);
 
-// console.log('TSV: '+ tsv)
+console.log('TSV: '+ tsv)
   // Ahora puedes mostrar 'tsv' en tu interfaz donde lo necesites
 }
       

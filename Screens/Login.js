@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailA
 import { KeyboardAvoidingView } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { doc,setDoc, getDoc, collection, query, where, getDocs,updateDoc  } from "firebase/firestore";
+import { Feather } from '@expo/vector-icons';
 
 LogBox.ignoreLogs(['@firebase/auth']);
 
@@ -20,6 +21,7 @@ const Login = () => {
   const auth = FIREBASE_AUTH;
   const [user, setUser] = useState(null);
   const [form, setForm] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,10 +59,8 @@ const Login = () => {
     const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
     return emailRegex.test(trimmedEmail) && email === trimmedEmail;
   };
-  
 
   const navigation = useNavigation();
-
 
   const signIn = async () => {
     setLoading(true);
@@ -110,7 +110,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-  
 
   const createUser = async () => {
     setLoading(true);
@@ -192,7 +191,6 @@ const Login = () => {
     }
   };
   
-
   const avisoUsuarioBorrado = () => {
     Alert.alert(
       'Usuario borrado',
@@ -236,7 +234,7 @@ const Login = () => {
       { cancelable: false }
     );
   };
- 
+
   /////////////////////////////
   return (
     <ImageBackground source={require('../assets/login.jpg')} style={Styles.fondo}>
@@ -246,16 +244,36 @@ const Login = () => {
             style={Styles.input}
             placeholder="Correo electrónico"
             value={email}
+            autoCapitalize="none"
             onChangeText={setEmail}
+            keyboardType="email-address"
+            returnKeyType='done'
+
           />
+        <View style={{flexDirection:'row',
+                     justifyContent:'flexstart',
+                     alignContent:'center',
+                     alignItems:'center'}}>
           <TextInput
             style={Styles.input}
             placeholder="Contraseña"
-            secureTextEntry
+            secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
           />
-         
+
+        <TouchableOpacity
+          onPress={() => setShowPassword(!showPassword)} 
+        >
+          <Feather
+            style={{marginLeft:4}}
+            name={showPassword ? "eye-off" : "eye"}
+            size={24}
+            color={showPassword ? "grey" : "black"} 
+          />
+
+        </TouchableOpacity>
+         </View>  
           <TouchableOpacity
             style={Styles.loginButton}
             onPress={() => {
@@ -267,7 +285,7 @@ const Login = () => {
         
           <TouchableOpacity
             style={Styles.registerButton}
-            onPress={createUser}>
+            onPress={()=> setForm(true)}>
             <Text style={Styles.registerButtonText}>Registrarse</Text>
           </TouchableOpacity>
 
@@ -277,6 +295,59 @@ const Login = () => {
             <Text style={Styles.registerButtonText}>Olvide mi contraseña</Text>
           </TouchableOpacity>
 
+          <Modal
+  animationType="slide"
+  transparent={true}
+  visible={form}
+  onRequestClose={() => {
+    setEmail(''); 
+    setPassword(''); 
+    setForm(false);
+  }
+}
+>
+  <View style={Styles.modalContainer}>
+    <View style={Styles.formulario}>
+      <Text style={Styles.modalText}>Ingrese email</Text>
+      <TextInput
+        style={Styles.input}
+        placeholder="Correo electrónico"
+        value={email}
+        onChangeText={setEmail}
+      />
+      <Text style={Styles.modalText}>Ingrese su contraseña</Text>
+     
+      <View style={Styles.passwordContainer}>
+          <TextInput
+            style={Styles.input}
+            placeholder="Contraseña"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity
+            style={Styles.eyeIconContainer}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Feather
+              style={{marginLeft:5, alignSelf: "center"}}
+              name={showPassword ? "eye-off" : "eye"}
+              size={24}
+              color={showPassword ? "grey" : "black"}
+            />
+          </TouchableOpacity>
+        </View>
+      <View style={Styles.buttonContainer}>
+        <TouchableOpacity style={Styles.acceptButton} onPress={createUser}>
+          <Text style={Styles.buttonText}>Crear usuario</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={Styles.closeButton} onPress={() => setForm(false)}>
+          <Text style={Styles.buttonText}>Cerrar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>  
             
 
         </KeyboardAvoidingView>
@@ -333,6 +404,49 @@ const Styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontSize: 16,
+  },
+  modalContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formulario: {
+    width: '80%',
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ccc',
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  showPasswordText: {
+    color: 'blue',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  acceptButton: {
+    backgroundColor: 'green',
+    padding: 10,
+    borderRadius: 5,
+  },
+  closeButton: {
+    backgroundColor: 'red',
+    padding: 10,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: 'white',
   },
 });
 
