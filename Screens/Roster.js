@@ -23,6 +23,7 @@ const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
 
 export default function Roster({ route }) {
+  
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [clave, setClave] = useState('');
@@ -58,9 +59,22 @@ export default function Roster({ route }) {
   const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
 
 
+////abre el Roster cuando se viene del boton ver Roster de Login.js/////  
+  useEffect(() => {
+    // Verifica si showModalIdentifier se proporcionó en las propiedades de navegación
+    if (route.params?.showModalIdentifier) {
+      const identifier = route.params.showModalIdentifier;
+      // Realiza acciones específicas según la identificación
+      if (identifier === 'verRoster') {
+        setShowModal(true);
+      }
+      // Restablece la identificación en las propiedades de navegación para que no se vuelva a usar
+      navigation.setParams({ showModalIdentifier: null });
+    }
+  }, [route.params, navigation]);
 /////////////////////////////////////////////
 const HEROKU_SERVER_URL = 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com'; // Reemplaza con la URL de tu servidor de Heroku
-// Función para realizar la compra y gestionar el sondeo
+
 const handleBuy = async () => {
   try {
     const { init_point, preference_id } = await handleIntegrationMP();
@@ -134,7 +148,7 @@ const borrarCuenta = async () => {
       });
     
     } else {
-      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+      console.log("*No se encontraron datos para el usuario con el correo electrónico:", userEmail);
     }
   } catch (error) {
     console.error("Error al cancelar la suscripción del usuario:", error);
@@ -195,7 +209,7 @@ const fetchUserData = async () => {
 
 const ejecutarFuncionX = async () => {
   // Lógica de tu función 
-  console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
+  //console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
   //
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
@@ -250,11 +264,11 @@ const ejecutarFuncionX = async () => {
 
 useEffect(() => {
   // Llamada inicial a fetchUserData al montar el componente
-  ejecutarFuncionX();
+ejecutarFuncionX();
 }, [userEmail]);
 
 
-  useEffect(() => {
+useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchUserData();
       ejecutarFuncionX();
@@ -267,7 +281,7 @@ useEffect(() => {
 /////////
 useEffect(() => {
   // Recupera el estado del CheckBox desde AsyncStorage
-  const getRememberDataSetting = async () => {
+const getRememberDataSetting = async () => {
     try {
       const storedRememberData = await AsyncStorage.getItem('rememberData');
       // Si se encuentra un valor en AsyncStorage, convierte a booleano
@@ -331,7 +345,7 @@ const loadConfig = async () => {
     loadConfig();
   }, []);
 
-  const saveConfig = async () => {
+const saveConfig = async () => {
     try {
       await AsyncStorage.setItem('url', url);
       await AsyncStorage.setItem('username', username);
@@ -347,14 +361,14 @@ const loadConfig = async () => {
       Alert.alert('Error al guardar la configuración');
     }
   };
-
   useEffect(() => {
     if (url && username && clave) {
       webViewRef.current?.reload();
     }
   }, [url, username, clave]);
 
-  const processHTML = (html) => {
+  /// PROCESA INFORMACION DEL PORTAL WEB  //////////  
+const processHTML = (html) => {
     if (typeof html !== 'string') {
       html = html.toString();
     }
@@ -435,8 +449,8 @@ const loadConfig = async () => {
   
     return extractedData;
   }; 
-  
-  const handleMessage = (event) => {
+
+const handleMessage = (event) => {
     const datos = event.nativeEvent.data;
     if (vencimiento > hoy) {
       console.log('ACTUALIZANDO ROSTER')
@@ -452,8 +466,8 @@ const loadConfig = async () => {
         });
     }
   };
-  // Función auxiliar para verificar si una fila es una fila vacía de tripulación
-  const isEmptyCrewRow = (rowData) => {
+  ///verifica si una fila es una fila vacía de tripulación
+const isEmptyCrewRow = (rowData) => {
     return (
       !rowData.CheckIn &&
       !rowData.NroVuelo &&
@@ -466,8 +480,9 @@ const loadConfig = async () => {
       (!rowData.Crew || rowData.Crew.length === 0)
     );
   };
-  
- const groupDataByDay = (data) => {
+
+  ////Agrupa los datos en items segun el dia
+const groupDataByDay = (data) => {
   const groupedData = {};
 
   if (Array.isArray(data)) {
@@ -513,10 +528,9 @@ const loadConfig = async () => {
 
   return [];
 };
-
 const groupedRosterData = groupDataByDay(rosterData);
   
-  const formatDate = (dateStr) => {
+const formatDate = (dateStr) => {
     // Mapa de nombres de meses abreviados a números de mes
     const monthMap = {
       JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
@@ -540,7 +554,7 @@ const groupedRosterData = groupDataByDay(rosterData);
     // Formatear la fecha con el día de la semana
     return `${dayOfWeek}, ${dateStr}`;
   };
-  const formatCheckIn = (checkInStr) => {
+const formatCheckIn = (checkInStr) => {
     // Usar una expresión regular para seleccionar la hora y los minutos
     const match = checkInStr.match(/\d{2}:\d{2}/);
 
@@ -552,7 +566,7 @@ const groupedRosterData = groupDataByDay(rosterData);
       return checkInStr; // O podrías devolver un mensaje de error o un valor predeterminado
     }
   };
-  const extractTime = (dateTimeStr) => {
+const extractTime = (dateTimeStr) => {
     // Usar una expresión regular para buscar la hora y los minutos en el formato HH:mm
     const match = dateTimeStr.match(/\d{2}:\d{2}/);
 
@@ -563,7 +577,9 @@ const groupedRosterData = groupDataByDay(rosterData);
       return dateTimeStr; // O podrías devolver un mensaje de error o un valor predeterminado
     }
   };
-  const getColorByDate = () => {
+
+/// colorea los items del Roster intercalando color  
+const getColorByDate = () => {
     // Crea un objeto para rastrear el color asignado a cada fecha
     const colorMap = {};
   
@@ -581,7 +597,8 @@ const groupedRosterData = groupDataByDay(rosterData);
       return colorMap[date];
     };
   };
-  const addHttpToUrl = (inputUrl) => {
+
+const addHttpToUrl = (inputUrl) => {
     const lowercasedUrl = inputUrl.toLowerCase();
     if (!lowercasedUrl.startsWith("http://") && !lowercasedUrl.startsWith("https://")) {
       return `http://${inputUrl}`;
@@ -592,32 +609,78 @@ const groupedRosterData = groupDataByDay(rosterData);
 const getColor = getColorByDate();
 
 function calculateDayDifference(items) {
-  let totalDifference = 0;
+  const checkIns = items.filter(item => item.CheckIn);
+  const checkOuts = items.filter(item => item.CheckOut);
 
-  for (let i = 0; i < items.length; i++) {
-    const currentItem = items[i];
+  if (checkIns.length === 0) {
+    return "N/A";
+  }
 
-    if (currentItem.CheckIn && currentItem.CheckOut) {
-      const checkInTime = parseTime(currentItem.CheckIn);
-      const checkOutTime = parseTime(currentItem.CheckOut);
+  // Si hay CheckIn pero no hay CheckOut en el mismo día
+  if (checkIns.length > checkOuts.length) {
+    // Obtén el próximo CheckOut en días subsiguientes
+    const nextCheckOut = items.find(item => item.CheckOut && !item.CheckIn);
+    
+    if (nextCheckOut) {
+      console.log('Tomando el proximo OUT')
 
-   //   console.log(`In Hora: ${currentItem.CheckIn} - Out Hora: ${currentItem.CheckOut}`);
+      const checkInTime = parseTime(checkIns[0].CheckIn);
+      const checkInMS = checkInTime ? checkInTime.getTime() : 0;
 
-      if (checkInTime && checkOutTime) {
-        const timeDifference = checkOutTime.getTime() - checkInTime.getTime();
-        totalDifference += timeDifference;
-      //  console.log(`Difference: ${timeDifference / (60 * 1000)} minutes`);
+      const nextCheckOutTime = parseTime(nextCheckOut.CheckOut);
+      const nextCheckOutMS = nextCheckOutTime ? nextCheckOutTime.getTime() : 0;
+
+      // Calcular la diferencia utilizando el próximo CheckOut
+      console.log('In' + checkInMS)
+      console.log('NextOut'+ nextCheckOutMS)
+      var groupTotalDifference = nextCheckOutMS - checkInMS;
+
+      // Asegurar que la diferencia sea positiva
+      if (groupTotalDifference < 0) {
+        groupTotalDifference += 24 * 60 * 60 * 1000; // Agregar un día en milisegundos
       }
+
+      const groupHours = Math.floor(groupTotalDifference / (60 * 60 * 1000));
+      const groupMinutes = Math.floor((groupTotalDifference % (60 * 60 * 1000)) / (60 * 1000));
+      const groupFormattedDifference = `${groupHours.toString().padStart(2, '0')}:${groupMinutes.toString().padStart(2, '0')}`;
+
+      return groupFormattedDifference;
     }
   }
 
-  const hours = Math.floor(totalDifference / (60 * 60 * 1000));
-  const minutes = Math.floor((totalDifference % (60 * 60 * 1000)) / (60 * 1000));
- // console.log(`Total Difference: ${totalDifference}`);
- // console.log(`Total Difference Formatted: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+  // Resto del código para cuando hay tanto CheckIn como CheckOut
+  const groupInMS = checkIns.reduce((accumulator, currentItem) => {
+    if (currentItem.CheckIn) {
+      const checkInTime = parseTime(currentItem.CheckIn);
+      if (checkInTime) {
+        accumulator += checkInTime.getTime();
+      }
+    }
+    return accumulator;
+  }, 0);
 
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  const groupOutMS = checkOuts.reduce((accumulator, currentItem) => {
+    if (currentItem.CheckOut) {
+      const checkOutTime = parseTime(currentItem.CheckOut);
+      if (checkOutTime) {
+        accumulator += checkOutTime.getTime();
+      }
+    }
+    return accumulator;
+  }, 0);
+
+  var groupTotalDifference = groupOutMS - groupInMS;
+ // Manejar el caso de horarios PM y AM
+  if (groupTotalDifference < 0) {
+    groupTotalDifference += 24 * 60 * 60 * 1000; // Agregar un día completo en milisegundos
+  }
+  const groupHours = Math.floor(groupTotalDifference / (60 * 60 * 1000));
+  const groupMinutes = Math.floor((groupTotalDifference % (60 * 60 * 1000)) / (60 * 1000));
+  const groupFormattedDifference = `${groupHours.toString().padStart(2, '0')}:${groupMinutes.toString().padStart(2, '0')}`;
+
+  return groupFormattedDifference;
 }
+
 // Función para convertir una cadena de tiempo en un objeto Date
 function parseTime(timeString) {
   const time = timeString.slice(-5);
@@ -661,45 +724,165 @@ const calculateTotalDifferenceForEachGroup = (groupedRosterData) => {
 const groupedRosterDataWithTotalDifference = calculateTotalDifferenceForEachGroup(groupedRosterData);
 
 function calculateDayDifference(items) {
-  let totalDifference = 0;
+  const checkIns = items.filter(item => item.CheckIn);
+  const checkOuts = items.filter(item => item.CheckOut);
+  const ETAs = items.filter(item => item.ETA);
 
-  if (items.length > 1) {
-    for (let i = 0; i < items.length; i++) {
-      const currentItem = items[i];
+  if (checkIns.length === 0 || checkOuts.length === 0) {
+    return "";
+  }
 
-      if (currentItem.CheckIn && currentItem.CheckOut) {
-        const checkInTime = parseTime(currentItem.CheckIn);
-        const checkOutTime = parseTime(currentItem.CheckOut);
+  // Si hay CheckIn pero no hay CheckOut en el mismo día
+  if (checkOuts.length === 0) {
+    console.log('Item sin Checkout');
 
-        if (checkInTime && checkOutTime) {
-          const timeDifference = checkOutTime.getTime() - checkInTime.getTime();
-          totalDifference += timeDifference;
-        }
+    // Obtén el próximo evento (CheckOut o ETA) en días subsiguientes
+    const now = new Date();
+    const futureEvents = [...checkOuts, ...ETAs].filter(item => parseTime(item) > now);
+    const nextEvent = futureEvents.reduce((min, item) => {
+      const itemTime = parseTime(item);
+      return itemTime && itemTime < parseTime(min) ? item : min;
+    }, futureEvents[0]);
+
+    console.log('Next Event:', nextEvent);
+
+    if (nextEvent) {
+      console.log('Tomando el próximo OUT o ETA');
+
+      const checkInTime = parseTime(checkIns[0].CheckIn);
+      const checkInMS = checkInTime ? checkInTime.getTime() : 0;
+
+      const nextEventTime = parseTime(nextEvent);
+      const nextEventMS = nextEventTime ? nextEventTime.getTime() : 0;
+
+      // Calcular la diferencia utilizando el próximo CheckOut o ETA
+      console.log('******In' + checkInMS);
+      console.log('****NextEvent' + nextEventMS);
+      
+      // Si el próximo evento es un CheckOut y comienza en otro día, ajusta la fecha
+      if (nextEvent.CheckOut && nextEventMS > checkInMS) {
+        nextEventMS -= 24 * 60 * 60 * 1000; // Restar un día en milisegundos
       }
-    }
-  } else if (items.length === 1) {
-    const singleItem = items[0];
-    if (singleItem.CheckIn && singleItem.CheckOut) {
-      const checkInTime = parseTime(singleItem.CheckIn);
-//      console.log(checkInTime)
-      const checkOutTime = parseTime(singleItem.CheckOut);
 
-      if (checkInTime && checkOutTime) {
-        const timeDifference = checkOutTime.getTime() - checkInTime.getTime();
-        totalDifference += timeDifference;
+      var groupTotalDifference = nextEventMS - checkInMS;
+
+      // Asegurar que la diferencia sea positiva
+      if (groupTotalDifference < 0) {
+        groupTotalDifference += 24 * 60 * 60 * 1000; // Agregar un día en milisegundos
       }
+
+      const groupHours = Math.floor(groupTotalDifference / (60 * 60 * 1000));
+      const groupMinutes = Math.floor((groupTotalDifference % (60 * 60 * 1000)) / (60 * 1000));
+      
+      // Mostrar espacio en blanco si el formato del TSV es diferente a "00:00"
+      const groupFormattedDifference = groupHours === 0 && groupMinutes === 0
+        ? "00:00"
+        : `${groupHours.toString().padStart(2, '0')}:${groupMinutes.toString().padStart(2, '0')}`;
+
+      return groupFormattedDifference;
+    } else {
+      console.log('No hay CheckOut o ETA futuro encontrado.');
     }
   }
 
-  const hours = Math.floor(totalDifference / (60 * 60 * 1000));
-  const minutes = Math.floor((totalDifference % (60 * 60 * 1000)) / (60 * 1000));
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  // Resto del código para cuando hay tanto CheckIn como CheckOut
+  const groupInMS = checkIns.reduce((accumulator, currentItem) => {
+    if (currentItem.CheckIn) {
+      const checkInTime = parseTime(currentItem.CheckIn);
+      if (checkInTime) {
+        accumulator += checkInTime.getTime();
+      }
+    }
+    return accumulator;
+  }, 0);
+
+  const groupOutMS = checkOuts.reduce((accumulator, currentItem) => {
+    if (currentItem.CheckOut) {
+      const checkOutTime = parseTime(currentItem.CheckOut);
+      if (checkOutTime) {
+        accumulator += checkOutTime.getTime();
+      }
+    }
+    return accumulator;
+  }, 0);
+
+  var groupTotalDifference = groupOutMS - groupInMS;
+  // Manejar el caso de horarios PM y AM
+  if (groupTotalDifference < 0) {
+    groupTotalDifference += 24 * 60 * 60 * 1000; // Agregar un día completo en milisegundos
+  }
+  const groupHours = Math.floor(groupTotalDifference / (60 * 60 * 1000));
+  const groupMinutes = Math.floor((groupTotalDifference % (60 * 60 * 1000)) / (60 * 1000));
+
+  // Mostrar espacio en blanco si el formato del TSV es diferente a "00:00"
+  const groupFormattedDifference = groupHours === 0 && groupMinutes === 0
+    ? "00:00"
+    : `${groupHours.toString().padStart(2, '0')}:${groupMinutes.toString().padStart(2, '0')}`;
+
+  return groupFormattedDifference;
+}
+
+function calculateDayDifferenceWithTTEE(items) {
+  const checkIns = items.filter(item => item.CheckIn);
+  const checkOuts = items.filter(item => item.CheckOut);
+
+  if (checkIns.length === 0 || checkOuts.length === 0) {
+    return "";
+  }
+
+  // Resto del código para cuando hay tanto CheckIn como CheckOut
+  const groupInMS = checkIns.reduce((accumulator, currentItem) => {
+    if (currentItem.CheckIn) {
+      const checkInTime = parseTime(currentItem.CheckIn);
+      if (checkInTime) {
+        accumulator += checkInTime.getTime();
+      }
+    }
+    return accumulator;
+  }, 0);
+
+  const groupOutMS = checkOuts.reduce((accumulator, currentItem) => {
+    if (currentItem.CheckOut) {
+      const checkOutTime = parseTime(currentItem.CheckOut);
+      if (checkOutTime) {
+        accumulator += checkOutTime.getTime();
+      }
+    }
+    return accumulator;
+  }, 0);
+
+  var groupTotalDifference = groupOutMS - groupInMS;
+  // Manejar el caso de horarios PM y AM
+  if (groupTotalDifference < 0) {
+    groupTotalDifference += 24 * 60 * 60 * 1000; // Agregar un día completo en milisegundos
+  }
+  const groupHours = Math.floor(groupTotalDifference / (60 * 60 * 1000));
+  const groupMinutes = Math.floor((groupTotalDifference % (60 * 60 * 1000)) / (60 * 1000));
+
+  // Restar 30 minutos en milisegundos para obtener TTEE
+  let TTEEinMS = groupTotalDifference - 30 * 60 * 1000;
+
+  // Asegurar que la diferencia sea positiva
+  if (TTEEinMS < 0) {
+    TTEEinMS = 0;
+  }
+
+  const TTEEHours = Math.floor(TTEEinMS / (60 * 60 * 1000));
+  const TTEEMinutes = Math.floor((TTEEinMS % (60 * 60 * 1000)) / (60 * 1000));
+
+  // Mostrar espacio en blanco si el formato del TTEE es diferente a "00:00"
+  const TTEEFormatted = TTEEHours === 0 && TTEEMinutes === 0
+    ? "00:00"
+    : `${TTEEHours.toString().padStart(2, '0')}:${TTEEMinutes.toString().padStart(2, '0')}`;
+
+  return TTEEFormatted;
 }
 // Mostrar los resultados actualizados en el registro
 groupedRosterDataWithTotalDifference.forEach((group, index) => {
  // console.log(`Grupo ${index + 1}: TSV - ${group.tsv}`);
+}
 
-});
+);
 
   return (
 
@@ -948,33 +1131,67 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
     <ScrollView style={{ flex: 1 }}>
       {groupedRosterData.map((group, index) => (
       
-        <View 
+      <View 
         style={Styles.Modal}
         key={index}>     
+        
+        <View style={{flexDirection:'row',
+                      justifyContent:'space-between',
+                      borderWidth:1,
+                      borderColor:'black',
+                      backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
+                    }}>
           <Text style={{
             textAlign: 'left',
             paddingHorizontal: 4,
             paddingVertical: 2,
             fontWeight: 'bold',
-            borderWidth: 1,
+          //  borderWidth: 1,
           //  borderColor: 'violet',
             fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
             color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
             backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
           }}>
-
+        
         {formatDate(group.date)}
+        
+        </Text>
+        
+   
+       <View style={{flexDirection:'row',
+                     justifyContent:'flex-end',
+                    alignItems:'center'}}>
+        
         {group.items.length > 1 && (
-        <Text style={{ fontWeight: 'bold' }}>
-            || TSV: {calculateDayDifference(group.items)}
+        <Text style={{ fontWeight: 'bold',
+                       borderWidth:2,
+                       fontSize:14,
+                       borderColor:'lightgrey',
+                       borderRadius:100,
+                       paddingHorizontal:10,
+                       paddingTop:2 ,
+                       backgroundColor:'#ffebcd'
+                        }}>
+             TSV: {calculateDayDifference(group.items)}
         </Text>
       )}
+      {group.items.length > 1 && (
+        <Text style={{ fontWeight: 'bold',
+                       fontSize:14,
+                       marginHorizontal:'6%',
+                       borderWidth:2,
+                       borderColor:'lightgrey',
+                       borderRadius:100,
+                       paddingHorizontal:10,
+                       paddingTop:2,
+                       backgroundColor:'#f0fff0' }}>
+             TTEE: {calculateDayDifferenceWithTTEE(group.items)}
         </Text>
-        
-        
+      )}
+      </View>
+    </View>
 
           {group.items.map((item, itemIndex,) => {
-
 
             const hasDepArr = item.Dep && item.Arr;
             const hasETD = item.ETD;
@@ -1033,7 +1250,7 @@ if (checkInTime && checkOutTime) {
   // Formatea la diferencia de tiempo en "HH:MM"
   var tsv = (OutMS - InMS);
 
-console.log('TSV: '+ tsv)
+//console.log('TSV: '+ tsv)
   // Ahora puedes mostrar 'tsv' en tu interfaz donde lo necesites
 }
       

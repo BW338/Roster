@@ -6,7 +6,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailA
 import { KeyboardAvoidingView } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { doc,setDoc, getDoc, collection, query, where, getDocs,updateDoc  } from "firebase/firestore";
-import { Feather } from '@expo/vector-icons';
+import { Feather, Fontisto } from '@expo/vector-icons';
 
 LogBox.ignoreLogs(['@firebase/auth']);
 
@@ -50,13 +50,12 @@ const Login = () => {
       console.error('Error al guardar datos en AsyncStorage:', error);
     }
   };
-
   const isEmailValid = (email) => {
     // Elimina espacios en blanco al inicio y al final del correo electrónico
-    const trimmedEmail = email.trim();
+  const trimmedEmail = email.trim();
     
     // Verifica si el correo electrónico sin espacios al final coincide con el formato válido
-    const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
+  const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
     return emailRegex.test(trimmedEmail) && email === trimmedEmail;
   };
 
@@ -78,7 +77,8 @@ const Login = () => {
         // Obtener datos adicionales del usuario desde Firestore
         const userDocRef = doc(FIREBASE_FIRESTORE, 'users', user.uid);
         const userDocSnapshot = await getDoc(userDocRef);
-  
+        console.log('UID del usuario:', user.uid);
+
         if (userDocSnapshot.exists()) {
           const userData = userDocSnapshot.data();
           console.log('userData:', userData);
@@ -98,7 +98,7 @@ const Login = () => {
             navigation.navigate('Roster', { userEmail: email });
           }
         } else {
-          console.log('No se encontraron datos adicionales para el usuario.');
+          console.log('No se encontraron datos adicionales para el usuario - A.');
         }
       } else {
         alert('Debes verificar tu correo electrónico antes de iniciar sesión.');
@@ -235,9 +235,44 @@ const Login = () => {
     );
   };
 
+  const verRoster = () => {
+    navigation.navigate('Roster', { showModalIdentifier: 'verRoster' });
+  };
   /////////////////////////////
   return (
     <ImageBackground source={require('../assets/login.jpg')} style={Styles.fondo}>
+     <View style={{borderWidth:2,
+                   boerderColor:'violet',
+                   width:'100%',
+                   justifyContent:'flex-end',
+                   height:'100%'}}>
+     
+     <View>
+     
+     <View style={{//  marginTop:'25%',
+                     borderWidth:1,
+                     borderColor:'white',
+                     borderTopRightRadius:60,
+                     borderTopLeftRadius:10,
+                     borderBottomLeftRadius:60,
+                     borderBottomRightRadius:10,
+                     alignSelf:'center',
+                     marginBottom:'20%',
+                     padding:20,}}>
+      <TouchableOpacity
+        onPress={verRoster}>
+      
+      <Fontisto name="cloudflare" size={42} color="white"  style={{paddingVertical:0, alignSelf:'center', marginTop:3}} />
+
+       <Text style={{
+                     color:'white',
+                     fontSize:20,
+                     }}>Ver Roster</Text>
+      </TouchableOpacity>
+    </View>
+
+      </View> 
+     
       <View style={Styles.container}>
         <KeyboardAvoidingView behavior="padding">
           <TextInput
@@ -352,6 +387,8 @@ const Login = () => {
 
         </KeyboardAvoidingView>
       </View>
+
+</View>      
     </ImageBackground>
   );
 };
@@ -370,6 +407,9 @@ const Styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     padding: 20,
     borderRadius: 10,
+    borderColor:'lightgrey',
+    borderWidth:2,
+    alignSelf:'center',
 
   },
   input: {
