@@ -314,7 +314,7 @@ const formatCustomDate = (date) => {
     const dayOfWeek = daysOfWeek[date.getDay()];
     const dayOfMonth = date.getDate();
     const shortMonth = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-    return `${dayOfWeek}, ${dayOfMonth}${shortMonth}`;
+    return `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`;
 
   };
 
@@ -341,7 +341,7 @@ const loadConfig = async () => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     loadConfig();
   }, []);
 
@@ -361,7 +361,8 @@ const saveConfig = async () => {
       Alert.alert('Error al guardar la configuración');
     }
   };
-  useEffect(() => {
+  
+useEffect(() => {
     if (url && username && clave) {
       webViewRef.current?.reload();
     }
@@ -531,29 +532,36 @@ const groupDataByDay = (data) => {
 const groupedRosterData = groupDataByDay(rosterData);
   
 const formatDate = (dateStr) => {
-    // Mapa de nombres de meses abreviados a números de mes
-    const monthMap = {
-      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
-    };
-  
-    // Extraer el día y el mes de la cadena
-    const day = parseInt(dateStr.substring(0, 2), 10);
-    const monthStr = dateStr.substring(2, 5);
-    const month = monthMap[monthStr];
-  
-    // Obtener el año actual (puedes ajustar esto según tus necesidades)
-    const currentYear = new Date().getFullYear();
-  
-    // Crear una nueva fecha con el año actual, mes y día
-    const date = new Date(currentYear, month, day);
-  
-    // Obtener el día de la semana como texto
-    const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-    const dayOfWeek = daysOfWeek[date.getDay()];
-  
-    // Formatear la fecha con el día de la semana
-    return `${dayOfWeek}, ${dateStr}`;
+  // Mapa de nombres de meses abreviados a números de mes
+  const monthMap = {
+    JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
   };
+
+  // Extraer el día y el mes de la cadena
+  const day = parseInt(dateStr.substring(0, 2), 10);
+  const monthStr = dateStr.substring(2, 5);
+  const month = monthMap[monthStr];
+
+  // Obtener el año actual (puedes ajustar esto según tus necesidades)
+  const currentYear = new Date().getFullYear();
+
+  // Crear una nueva fecha con el año actual, mes y día
+  const date = new Date(currentYear, month, day);
+
+  // Obtener el día de la semana como texto
+  const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+  const dayOfWeek = daysOfWeek[date.getDay()];
+
+  // Obtener el día del mes
+  const dayOfMonth = date.getDate();
+  
+  // Obtener el mes como texto abreviado
+  const shortMonth = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+
+  // Formatear la fecha con el día de la semana y el día del mes
+  return `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`;
+};
+
 const formatCheckIn = (checkInStr) => {
     // Usar una expresión regular para seleccionar la hora y los minutos
     const match = checkInStr.match(/\d{2}:\d{2}/);
