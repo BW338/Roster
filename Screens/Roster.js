@@ -158,6 +158,14 @@ const borrarCuenta = async () => {
 };  
 
 const fetchUserData = async () => {
+  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
+  const isFromSignIn = routeParams.fromSignIn || false;
+
+  // Verifica si la función debe ejecutarse solo si viene de signIn
+  if (!isFromSignIn) {
+    return;
+  }
+
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
@@ -184,20 +192,6 @@ const fetchUserData = async () => {
         const hoy = Date.now();
         const vigente = exp > hoy;
         setEsVigente(vigente);
-      /*  setTimeout(() => {
-          if(fechaCaducidad == "31/12/1969" || fechaCaducidad == '1/1/1970'){
-            setVencido('sin suscripcion')
-            console.log('----' + vencido)
-          }
-          if(fechaCaducidad == "NaN/NaN/NaN"){
-            setVencido('sin suscripcion')
-            console.log('----' + vencido)
-          } else {
-            setVencido(fechaCaducidad)
-            console.log('*****' + fechaCaducidad)
-          }
-        }, 3000);
-*/
       });
     } else {
       console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
@@ -207,10 +201,17 @@ const fetchUserData = async () => {
   }       
 };
 
+
 const ejecutarFuncionX = async () => {
-  // Lógica de tu función 
-  //console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
-  //
+  // Lógica de tu función
+  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
+  const isFromSignIn = routeParams.fromSignIn || false;
+
+  // Verifica si la función debe ejecutarse solo si viene de signIn
+  if (!isFromSignIn) {
+    return;
+  }
+
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
@@ -237,20 +238,6 @@ const ejecutarFuncionX = async () => {
         const hoy = Date.now();
         const vigente = exp > hoy;
         setEsVigente(vigente);
-      /*  setTimeout(() => {
-          if(fechaCaducidad == "31/12/1969" || fechaCaducidad == '1/1/1970'){
-            setVencido('sin suscripcion')
-            console.log('----' + vencido)
-          }
-          if(fechaCaducidad == "NaN/NaN/NaN"){
-            setVencido('sin suscripcion')
-            console.log('----' + vencido)
-          } else {
-            setVencido(fechaCaducidad)
-            console.log('*****' + fechaCaducidad)
-          }
-        }, 3000);
-*/
       });
     } else {
       console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
@@ -261,6 +248,7 @@ const ejecutarFuncionX = async () => {
   // Llamada a fetchUserData
   await fetchUserData();
 }; 
+
 
 useEffect(() => {
   // Llamada inicial a fetchUserData al montar el componente
@@ -888,9 +876,16 @@ function calculateDayDifferenceWithTTEE(items) {
 // Mostrar los resultados actualizados en el registro
 groupedRosterDataWithTotalDifference.forEach((group, index) => {
  // console.log(`Grupo ${index + 1}: TSV - ${group.tsv}`);
-}
+} );
 
-);
+const clearCookies = async () => {
+  try {
+    const cleard = await CookieManager.clearAll();
+    console.log('Cookies cleared:', cleard);
+  } catch (error) {
+    console.error('Error clearing cookies:', error);
+  }
+};
 
   return (
 <>
@@ -927,6 +922,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
         <Button
         title="Ingresar"
         onPress={() => {
+          console.log('*********BOTON INGRESAR')
           webViewRef.current?.injectJavaScript(`
             var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
             var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
@@ -939,10 +935,14 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
               }
             }
           `);
+
+              // Limpiar cookies
+              clearCookies();
+
+          console.log('///'+username)
+          webViewRef.current?.reload();
         }
       } /> 
-
-
     </View>
 
     <TouchableOpacity
@@ -1149,7 +1149,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
                       justifyContent:'space-between',
                       borderWidth:1,
                       borderColor:'black',
-                      backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#F5D2C3' : 'white',
+                      backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#FFFCCB' : 'white',
                     }}>
           <Text style={{
             textAlign: 'left',
@@ -1160,7 +1160,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
           //  borderColor: 'violet',
             fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
             color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
-            backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#F5D2C3' : 'white',
+            backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#FFFCCB' : 'white',
           }}>
         
         {formatDate(group.date)}
@@ -1287,7 +1287,7 @@ if (checkInTime && checkOutTime) {
                     formatDate(group.date) === formatCustomDate(currentDate) ? 1 : 0.64,
                   backgroundColor:
                     formatDate(group.date) === formatCustomDate(currentDate)
-                      ? '#F5D2C3'
+                      ? '#FFFCCB'
                       : getColor(group.date),
                   marginBottom: 0,
                   margin:0,
@@ -1469,8 +1469,7 @@ if (checkInTime && checkOutTime) {
                         TSV:{tsv}
                         </Text>   */}
                       </View>
-                    )    
-                    
+                    )                     
                   }           
                     
                   </View>     
@@ -1486,14 +1485,15 @@ if (checkInTime && checkOutTime) {
                     marginLeft:5,
                     backgroundColor:
                     formatDate(group.date) === formatCustomDate(currentDate)
-                      ? '#F5D2C3'
+                      ? '#FFFCCB'
                       : getColor(group.date),}}>
       
       <Ionicons name="people" size={22} color="#191970" />
      
       <Text style={{ fontSize: 16,
                      marginLeft:4,
-                     color:'#191970'}}>
+                     color:'#191970',
+                     }}>
                      {selectedFlight && selectedFlight.index === itemIndex && selectedFlight.date === item.ETD
                      ? 'Tripulación' : 'Tripulación'}
       </Text>
@@ -1523,7 +1523,6 @@ if (checkInTime && checkOutTime) {
               </View>             
             );          
           })}
-          
         </View>
       ))}
     </ScrollView>
@@ -1603,6 +1602,11 @@ if (checkInTime && checkOutTime) {
           }}
           onError={(error) => {
             console.error('Error de WebView:', error);
+            if (Platform.OS === 'android') {
+              ToastAndroid.show('Error en el WebView', ToastAndroid.LONG);
+            } else {
+              // ARMAR TOAST PARA IOS
+            }
           }}
         />
       </View>
@@ -1805,23 +1809,39 @@ const Styles = StyleSheet.create({
     fontWeight: 'bold',
     borderWidth:2,
     fontSize:14,
-    borderColor:'lightgrey',
+    borderColor:'#98980C',
     borderRadius:10,
     paddingHorizontal:6,
     paddingVertical:0,
     paddingTop:0 ,
-    backgroundColor:'#ffebcd',
+    backgroundColor:'#E4ECFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5, // Para sombra en Android
   },
-  textTtee:{
+  textTtee: {
     fontWeight: 'bold',
-    fontSize:14,
-    marginHorizontal:'6%',
-    borderWidth:2,
-    borderColor:'lightgrey',
-    borderRadius:10,
-    paddingHorizontal:6,
-    paddingVertical:0,
-    paddingTop:0 ,
-    backgroundColor:'#f0fff0' 
+    fontSize: 14,
+    marginHorizontal: '6%',
+    borderWidth: 2,
+    borderColor: '#98980C',
+    borderRadius: 10,
+    backgroundColor: '#f0fff0',
+    paddingHorizontal: 6,
+    paddingVertical: 0, // Ajusta el espaciado vertical según tus preferencias
+    // Agrega sombra
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5, // Para sombra en Android
   },
 });

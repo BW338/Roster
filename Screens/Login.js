@@ -101,14 +101,14 @@ const Login = () => {
             /*  
             alert('Tu suscripción ha sido cancelada. Por favor, contacta al soporte para más información.');
 */
-            console.log('Antes de avisoUsuarioBorrado');
+       //     console.log('Antes de avisoUsuarioBorrado');
             avisoUsuarioBorrado();
-            console.log('Después de avisoUsuarioBorrado'); 
+         //   console.log('Después de avisoUsuarioBorrado'); 
 
           } else {
             // Usuario no cancelado, navega a Roster
-            console.log('Navegando a Roster.js');
-            navigation.navigate('Roster', { userEmail: email });
+       //     console.log('Navegando a Roster.js');
+            navigation.navigate('Roster', { userEmail: email, fromSignIn: true  });
           }
         } else {
           console.log('No se encontraron datos adicionales para el usuario - A.');
