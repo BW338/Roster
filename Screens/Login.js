@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions, LogBox, Alert, Modal} from 'react-native';
+import React, { useState, useEffect,useRef } from "react";
+import { View, ImageBackground, Text, StyleSheet, TextInput, TouchableOpacity, Dimensions, LogBox, Alert, Modal, Animated} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FIREBASE_AUTH, FIREBASE_FIRESTORE } from "../FirebaseConfig";
 import { createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -22,6 +22,19 @@ const Login = () => {
   const [user, setUser] = useState(null);
   const [form, setForm] = useState(false); 
   const [showPassword, setShowPassword] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  ///Animacion FadeIn Logo  //////
+  useEffect(() => {
+    Animated.timing(
+      fadeAnim,
+      {
+        toValue: 1,
+        duration: 2000, // Duración de la animación en milisegundos
+        useNativeDriver: true,
+      }
+    ).start();
+  }, [fadeAnim]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -248,28 +261,19 @@ const Login = () => {
                    height:'100%'}}>
      
      <View>
-     
-     <View style={{//  marginTop:'25%',
-                     borderWidth:1,
-                     borderColor:'white',
-                     borderTopRightRadius:60,
-                     borderTopLeftRadius:10,
-                     borderBottomLeftRadius:60,
-                     borderBottomRightRadius:10,
-                     alignSelf:'center',
-                     marginBottom:'20%',
-                     padding:20,}}>
-      <TouchableOpacity
-        onPress={verRoster}>
-      
-      <Fontisto name="cloudflare" size={42} color="white"  style={{paddingVertical:0, alignSelf:'center', marginTop:3}} />
-
-       <Text style={{
-                     color:'white',
-                     fontSize:20,
-                     }}>Ver Roster</Text>
-      </TouchableOpacity>
-    </View>
+   
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <View style={Styles.contenedorLogo}>
+        <TouchableOpacity
+          onPress={verRoster}> 
+        <Fontisto name="cloudflare" size={64} color="white"  style={{paddingVertical:0, alignSelf:'center'}} />
+        <Text style={{
+                      color:'white',
+                      fontSize:20,
+                      }}>Ver Roster</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
 
       </View> 
      
@@ -385,7 +389,7 @@ const Login = () => {
 </Modal>  
             
 
-        </KeyboardAvoidingView>
+</KeyboardAvoidingView>
       </View>
 
 </View>      
@@ -395,7 +399,7 @@ const Login = () => {
 
 const Styles = StyleSheet.create({
   fondo: {
-    marginTop:margenSup,
+   // marginTop:margenSup,
     flex: 1,
     resizeMode: 'cover',
     justifyContent: 'flex-end',
@@ -487,6 +491,19 @@ const Styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
+  },
+  contenedorLogo:{
+    borderWidth:1.5,
+    borderColor:'white',
+    borderTopRightRadius:80,
+    borderTopLeftRadius:10,
+    borderBottomLeftRadius:40,
+    borderBottomRightRadius:10,
+    alignSelf:'center',
+    marginBottom:'30%',
+    paddingRight:25,
+    paddingHorizontal:15,
+    paddingVertical:10,
   },
 });
 

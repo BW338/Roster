@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar  as ExpoStatusBar } from 'expo-status-bar';
 import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions, ToastAndroid, Platform,
-         TouchableOpacity,StyleSheet,Image, useFocusEffect } from 'react-native';
+         TouchableOpacity,StyleSheet,Image, useFocusEffect , StatusBar} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomCheckBox from '../Routes/Components/Checkbox';
 import 'react-native-get-random-values';
@@ -14,7 +14,6 @@ import { doc, getDoc, collection, query, where, getDocs,updateDoc  } from "fireb
 import { openBrowserAsync } from "expo-web-browser";
 import { handleIntegrationMP } from '../MP/preference'; // Importa el módulo
 
-<StatusBar style="light" backgroundColor="blue" />
 
 
 const currentDate = new Date(); // Obtiene la fecha actual
@@ -23,7 +22,8 @@ const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente
 
 export default function Roster({ route }) {
-  
+ 
+ 
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [clave, setClave] = useState('');
@@ -893,8 +893,10 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 );
 
   return (
-
+<>
     <View style={Styles.container}>
+     <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
+   
     <View style={Styles.inputContainer}>
       <Text style={Styles.label}>Ingresa la dirección Web de tu plan de vuelo:</Text>
       <TextInput
@@ -1147,7 +1149,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
                       justifyContent:'space-between',
                       borderWidth:1,
                       borderColor:'black',
-                      backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
+                      backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#F5D2C3' : 'white',
                     }}>
           <Text style={{
             textAlign: 'left',
@@ -1158,7 +1160,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
           //  borderColor: 'violet',
             fontSize: formatDate(group.date) === formatCustomDate(currentDate) ? 20 : 16,
             color: formatDate(group.date) === formatCustomDate(currentDate) ? 'black' : 'black',
-            backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#fa8072' : 'white',
+            backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#F5D2C3' : 'white',
           }}>
         
         {formatDate(group.date)}
@@ -1168,31 +1170,15 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
    
        <View style={{flexDirection:'row',
                      justifyContent:'flex-end',
-                    alignItems:'center'}}>
+                     alignItems:'center'}}>
         
         {group.items.length > 1 && (
-        <Text style={{ fontWeight: 'bold',
-                       borderWidth:2,
-                       fontSize:14,
-                       borderColor:'lightgrey',
-                       borderRadius:100,
-                       paddingHorizontal:10,
-                       paddingTop:2 ,
-                       backgroundColor:'#ffebcd'
-                        }}>
-             TSV: {calculateDayDifference(group.items)}
+        <Text style={Styles.textTsv}>
+              TSV: {calculateDayDifference(group.items)}
         </Text>
       )}
       {group.items.length > 1 && (
-        <Text style={{ fontWeight: 'bold',
-                       fontSize:14,
-                       marginHorizontal:'6%',
-                       borderWidth:2,
-                       borderColor:'lightgrey',
-                       borderRadius:100,
-                       paddingHorizontal:10,
-                       paddingTop:2,
-                       backgroundColor:'#f0fff0' }}>
+        <Text style={Styles.textTtee}>
              TTEE: {calculateDayDifferenceWithTTEE(group.items)}
         </Text>
       )}
@@ -1301,7 +1287,7 @@ if (checkInTime && checkOutTime) {
                     formatDate(group.date) === formatCustomDate(currentDate) ? 1 : 0.64,
                   backgroundColor:
                     formatDate(group.date) === formatCustomDate(currentDate)
-                      ? '#fa8072'
+                      ? '#F5D2C3'
                       : getColor(group.date),
                   marginBottom: 0,
                   margin:0,
@@ -1500,7 +1486,7 @@ if (checkInTime && checkOutTime) {
                     marginLeft:5,
                     backgroundColor:
                     formatDate(group.date) === formatCustomDate(currentDate)
-                      ? '#fa8072'
+                      ? '#F5D2C3'
                       : getColor(group.date),}}>
       
       <Ionicons name="people" size={22} color="#191970" />
@@ -1537,6 +1523,7 @@ if (checkInTime && checkOutTime) {
               </View>             
             );          
           })}
+          
         </View>
       ))}
     </ScrollView>
@@ -1620,6 +1607,8 @@ if (checkInTime && checkOutTime) {
         />
       </View>
     </View>
+    
+    </>
   );
 }
 
@@ -1811,5 +1800,28 @@ const Styles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal:4,
     
+  },
+  textTsv:{
+    fontWeight: 'bold',
+    borderWidth:2,
+    fontSize:14,
+    borderColor:'lightgrey',
+    borderRadius:10,
+    paddingHorizontal:6,
+    paddingVertical:0,
+    paddingTop:0 ,
+    backgroundColor:'#ffebcd',
+  },
+  textTtee:{
+    fontWeight: 'bold',
+    fontSize:14,
+    marginHorizontal:'6%',
+    borderWidth:2,
+    borderColor:'lightgrey',
+    borderRadius:10,
+    paddingHorizontal:6,
+    paddingVertical:0,
+    paddingTop:0 ,
+    backgroundColor:'#f0fff0' 
   },
 });
