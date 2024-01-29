@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StatusBar  as ExpoStatusBar } from 'expo-status-bar';
 import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions, ToastAndroid, Platform,
          TouchableOpacity,StyleSheet,Image, useFocusEffect , StatusBar} from 'react-native';
@@ -58,6 +58,9 @@ export default function Roster({ route }) {
   const anioHoy = hoyFecha.getFullYear();
   const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
 
+  const [focusedDate, setFocusedDate] = useState(new Date());
+  const [itemHeights, setItemHeights] = useState([]); // Alturas de los elementos
+  const scrollViewRef = useRef(null);
 
 ////abre el Roster cuando se viene del boton ver Roster de Login.js/////  
   useEffect(() => {
@@ -302,10 +305,42 @@ const formatCustomDate = (date) => {
     const dayOfWeek = daysOfWeek[date.getDay()];
     const dayOfMonth = date.getDate();
     const shortMonth = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+  //  console.log('dia'+ `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`)
     return `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`;
-
   };
-
+  
+const formatDate = (dateStr) => {
+    // Mapa de nombres de meses abreviados a números de mes
+    const monthMap = {
+      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+    };
+  
+    // Extraer el día y el mes de la cadena
+    const day = parseInt(dateStr.substring(0, 2), 10);
+    const monthStr = dateStr.substring(2, 5);
+    const month = monthMap[monthStr];
+  
+    // Obtener el año actual (puedes ajustar esto según tus necesidades)
+    const currentYear = new Date().getFullYear();
+  
+    // Crear una nueva fecha con el año actual, mes y día
+    const date = new Date(currentYear, month, day);
+  
+    // Obtener el día de la semana como texto
+    const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const dayOfWeek = daysOfWeek[date.getDay()];
+  
+    // Obtener el día del mes
+    const dayOfMonth = date.getDate();
+  
+    // Obtener el mes como texto abreviado
+    const shortMonth = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+  
+    // Formatear la fecha con el día de la semana, el día del mes y el mes abreviado
+  //  console.log('-DIA ' + `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`);
+    return `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`;
+  };
+  
 const loadConfig = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('url');
@@ -518,37 +553,6 @@ const groupDataByDay = (data) => {
   return [];
 };
 const groupedRosterData = groupDataByDay(rosterData);
-  
-const formatDate = (dateStr) => {
-  // Mapa de nombres de meses abreviados a números de mes
-  const monthMap = {
-    JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
-  };
-
-  // Extraer el día y el mes de la cadena
-  const day = parseInt(dateStr.substring(0, 2), 10);
-  const monthStr = dateStr.substring(2, 5);
-  const month = monthMap[monthStr];
-
-  // Obtener el año actual (puedes ajustar esto según tus necesidades)
-  const currentYear = new Date().getFullYear();
-
-  // Crear una nueva fecha con el año actual, mes y día
-  const date = new Date(currentYear, month, day);
-
-  // Obtener el día de la semana como texto
-  const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-  const dayOfWeek = daysOfWeek[date.getDay()];
-
-  // Obtener el día del mes
-  const dayOfMonth = date.getDate();
-  
-  // Obtener el mes como texto abreviado
-  const shortMonth = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-
-  // Formatear la fecha con el día de la semana y el día del mes
-  return `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`;
-};
 
 const formatCheckIn = (checkInStr) => {
     // Usar una expresión regular para seleccionar la hora y los minutos
@@ -573,7 +577,6 @@ const extractTime = (dateTimeStr) => {
       return dateTimeStr; // O podrías devolver un mensaje de error o un valor predeterminado
     }
   };
-
 /// colorea los items del Roster intercalando color  
 const getColorByDate = () => {
     // Crea un objeto para rastrear el color asignado a cada fecha
@@ -876,16 +879,36 @@ function calculateDayDifferenceWithTTEE(items) {
 // Mostrar los resultados actualizados en el registro
 groupedRosterDataWithTotalDifference.forEach((group, index) => {
  // console.log(`Grupo ${index + 1}: TSV - ${group.tsv}`);
-} );
+}
+);
 
-const clearCookies = async () => {
-  try {
-    const cleard = await CookieManager.clearAll();
-    console.log('Cookies cleared:', cleard);
-  } catch (error) {
-    console.error('Error clearing cookies:', error);
-  }
-};
+///////
+ const handleItemLayout = (index, height) => {
+    setItemHeights((prevHeights) => {
+      const updatedHeights = [...prevHeights];
+      updatedHeights[index] = height;
+      return updatedHeights;
+    });
+  };
+
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      const todayIndex = groupedRosterData.findIndex(
+        (group) => formatDate(group.date) === formatCustomDate(currentDate)
+      );
+  
+      if (todayIndex !== -1) {
+        // Calcular la posición de desplazamiento para el día actual
+        const scrollToY = itemHeights
+          .slice(0, todayIndex)
+          .reduce((acc, height) => acc + height, 0);
+  
+        // Desplazar a la posición calculada
+        scrollViewRef.current.scrollTo({ y: scrollToY, animated: true });
+      }
+    }
+  }, [showModal, currentDate, itemHeights]);
+//////
 
   return (
 <>
@@ -922,7 +945,7 @@ const clearCookies = async () => {
         <Button
         title="Ingresar"
         onPress={() => {
-          console.log('*********BOTON INGRESAR')
+
           webViewRef.current?.injectJavaScript(`
             var usernameInput = document.querySelector('input[id="_login_ctrlUserName"]');
             var passwordInput = document.querySelector('input[id="_login_ctrlPassword"]');
@@ -934,13 +957,11 @@ const clearCookies = async () => {
                 loginButton.click();
               }
             }
-          `);
-
-              // Limpiar cookies
-              clearCookies();
+          `
+          );
+    //      webViewRef.current?.reload();
 
           console.log('///'+username)
-          webViewRef.current?.reload();
         }
       } /> 
     </View>
@@ -1125,7 +1146,7 @@ const clearCookies = async () => {
 <Modal
   visible={showModal}
   animationType="slide"
-  onRequestClose={() => setShowModal(false)}
+  onRequestClose={() => setShowModal(false)}  
 >
   <View style={{flex:1,
      marginTop:Platform.OS === 'ios' ? margenSup : 0,
@@ -1138,12 +1159,18 @@ const clearCookies = async () => {
     <Fontisto name="cloudflare" size={42} color="white"  style={{paddingVertical:0, alignSelf:'center', marginTop:3}} />
     </View>
 
-    <ScrollView style={{ flex: 1 }}>
+    <ScrollView 
+    ref={scrollViewRef}
+    style={{ flex: 1 }}>
       {groupedRosterData.map((group, index) => (
       
       <View 
         style={Styles.Modal}
-        key={index}>     
+        key={index}
+        onLayout={(event) => {
+          const { height } = event.nativeEvent.layout;
+          handleItemLayout(index, height);
+        }}>     
         
         <View style={{flexDirection:'row',
                       justifyContent:'space-between',
