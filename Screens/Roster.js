@@ -61,20 +61,15 @@ export default function Roster({ route }) {
   const [focusedDate, setFocusedDate] = useState(new Date());
   const [itemHeights, setItemHeights] = useState([]); // Alturas de los elementos
   const scrollViewRef = useRef(null);
+  const [forceScrollToToday, setForceScrollToToday] = useState(true);
+  const [isScrolling, setIsScrolling] = useState (false);
+  const scrollToTodayRef = useRef();
+  const [shouldScrollToToday, setShouldScrollToToday] = useState(true);
 
-////abre el Roster cuando se viene del boton ver Roster de Login.js/////  
-  useEffect(() => {
-    // Verifica si showModalIdentifier se proporcionó en las propiedades de navegación
-    if (route.params?.showModalIdentifier) {
-      const identifier = route.params.showModalIdentifier;
-      // Realiza acciones específicas según la identificación
-      if (identifier === 'verRoster') {
-        setShowModal(true);
-      }
-      // Restablece la identificación en las propiedades de navegación para que no se vuelva a usar
-      navigation.setParams({ showModalIdentifier: null });
-    }
-  }, [route.params, navigation]);
+  const [appStarted, setAppStarted] = useState(false);
+
+  const routeParams = route.params || {};
+ 
 /////////////////////////////////////////////
 const HEROKU_SERVER_URL = 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com'; // Reemplaza con la URL de tu servidor de Heroku
 
@@ -139,6 +134,10 @@ const borrarCuenta = async () => {
     const hace24Horas = ahora.getTime() - 24 * 60 * 60 * 1000; // Resta 24 horas en milisegundos
     const expirationDate = hace24Horas;
 
+    console.log('AHORA:' + ahora)
+    console.log('nuevo vencimiento:' + hace24Horas)
+    console.log('expirationDate:' + expirationDate)
+
     if (!querySnapshot.empty) {
       querySnapshot.forEach(async (doc) => {
         const docRef = doc.ref; // Utiliza doc.ref para obtener la referencia del documento
@@ -161,13 +160,14 @@ const borrarCuenta = async () => {
 };  
 
 const fetchUserData = async () => {
+
+  if (!appStarted) {
+    return; // Si appStarted es false, no ejecutar la lógica de fetchUserData
+  }
+  
+  console.log('fetchUserData')
   const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
   const isFromSignIn = routeParams.fromSignIn || false;
-
-  // Verifica si la función debe ejecutarse solo si viene de signIn
-  if (!isFromSignIn) {
-    return;
-  }
 
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
@@ -204,14 +204,20 @@ const fetchUserData = async () => {
   }       
 };
 
-
+useEffect(()=>{
+  
+},[]);
+/////////////////////////////////////
 const ejecutarFuncionX = async () => {
   // Lógica de tu función
+ // console.log('ejecutarFuncionX')
+
   const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
   const isFromSignIn = routeParams.fromSignIn || false;
 
   // Verifica si la función debe ejecutarse solo si viene de signIn
   if (!isFromSignIn) {
+    console.log('No es boton Iniciar sesion')
     return;
   }
 
@@ -219,6 +225,7 @@ const ejecutarFuncionX = async () => {
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
   try {
+    console.log('ejecutarFuncionX')
     const querySnapshot = await getDocs(queryByEmail);
 
     if (!querySnapshot.empty) {
@@ -252,14 +259,31 @@ const ejecutarFuncionX = async () => {
   await fetchUserData();
 }; 
 
+useEffect(() => {
+  if (route.params?.showModalIdentifier === 'verRoster' && !showModal) {
+    setShowModal(true);
+    console.log('viniendo de Ver Roster');
+    // Restablece la identificación en las propiedades de navegación para que no se vuelva a usar
+    navigation.setParams({ showModalIdentifier: null });
+  }else{
+    console.log('No se preciono ver roster')
+  }
+}, [route.params, navigation, showModal]);
 
 useEffect(() => {
   // Llamada inicial a fetchUserData al montar el componente
-ejecutarFuncionX();
-}, [userEmail]);
+  if (appStarted) {
+    console.log('llamando a Funcion x');
+    ejecutarFuncionX();
+  } else {
+    console.log('appStarted = false');
+  }
+}, [userEmail, appStarted]);
 
 
 useEffect(() => {
+  console.log('unsubscribe')
+
     const unsubscribe = navigation.addListener('focus', () => {
       fetchUserData();
       ejecutarFuncionX();
@@ -269,8 +293,10 @@ useEffect(() => {
 
     return unsubscribe;
   }, [navigation]);
-/////////
+
 useEffect(() => {
+  console.log('getRememberDataSetting')
+
   // Recupera el estado del CheckBox desde AsyncStorage
 const getRememberDataSetting = async () => {
     try {
@@ -290,7 +316,69 @@ const getRememberDataSetting = async () => {
   getRememberDataSetting();
 }, []);
 
+useEffect(() => {
+  console.log('loadconfig')
+  loadConfig();
+}, []);
+
+useEffect(() => {
+  console.log('  if (url && username && clave) { ')
+  if (url && username && clave) {
+    webViewRef.current?.reload();
+  }
+}, [url, username, clave]);
+/*
+useEffect(() => {
+  console.log('**********************************');
+  console.log('useEffect scrollToToday');
+  setIsScrolling(false); // Asegúrate de desactivar el scroll al montar el componente
+  scrollToToday();
+}, [showModal, currentDate, itemHeights, isScrolling, scrollToToday]);
+
+
+const scrollToToday = useCallback(() => {
+  console.log('scrollToToday');
+
+  if (!isScrolling && showModal) {
+    const todayIndex = groupedRosterData.findIndex(
+      (group) => formatDate(group.date) === formatCustomDate(currentDate)
+    );
+
+    if (todayIndex !== -1) {
+      const scrollToY = itemHeights.slice(0, todayIndex).reduce((acc, height) => acc + height, 0);
+      scrollViewRef.current.scrollTo({ y: scrollToY, animated: true });
+    }
+  }
+}, [showModal, currentDate, itemHeights, isScrolling, scrollViewRef]);
+
+const handleItemLayout = (index, height) => {
+  console.log('handleItemLayout')
+  setItemHeights((prevHeights) => {
+    const updatedHeights = [...prevHeights];
+    if (updatedHeights[index] !== height) {
+      updatedHeights[index] = height;
+    }
+    return updatedHeights;
+  });
+};
+
+const handleScrollBeginDrag = () => {
+  console.log('setIsCrolling');
+  setIsScrolling(true);
+  // Otras lógicas según sea necesario
+};
+
+const handleScrollEndDrag = () => {
+  console.log('setIsCrolling');
+  setTimeout(() => {
+    setIsScrolling(false);
+  }, 100);  // Ajusta el tiempo según sea necesario
+  // Otras lógicas según sea necesario
+};
+*/
 const toggleCrewVisibility = (flightIndex, date) => {
+  console.log('tripulacion')
+
     if (selectedFlight && selectedFlight.index === flightIndex && selectedFlight.date === date) {
       // Si ya está abierto, cierra la tripulación
       setSelectedFlight(null);
@@ -299,6 +387,9 @@ const toggleCrewVisibility = (flightIndex, date) => {
       setSelectedFlight({ index: flightIndex, date });
     }
   };
+
+////////////////////////////////////////////////////////
+
 
 const formatCustomDate = (date) => {
     const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -364,10 +455,6 @@ const loadConfig = async () => {
     }
   };
 
-useEffect(() => {
-    loadConfig();
-  }, []);
-
 const saveConfig = async () => {
     try {
       await AsyncStorage.setItem('url', url);
@@ -384,12 +471,6 @@ const saveConfig = async () => {
       Alert.alert('Error al guardar la configuración');
     }
   };
-  
-useEffect(() => {
-    if (url && username && clave) {
-      webViewRef.current?.reload();
-    }
-  }, [url, username, clave]);
 
   /// PROCESA INFORMACION DEL PORTAL WEB  //////////  
 const processHTML = (html) => {
@@ -883,31 +964,7 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 );
 
 ///////
- const handleItemLayout = (index, height) => {
-    setItemHeights((prevHeights) => {
-      const updatedHeights = [...prevHeights];
-      updatedHeights[index] = height;
-      return updatedHeights;
-    });
-  };
-
-  useEffect(() => {
-    if (scrollViewRef.current) {
-      const todayIndex = groupedRosterData.findIndex(
-        (group) => formatDate(group.date) === formatCustomDate(currentDate)
-      );
-  
-      if (todayIndex !== -1) {
-        // Calcular la posición de desplazamiento para el día actual
-        const scrollToY = itemHeights
-          .slice(0, todayIndex)
-          .reduce((acc, height) => acc + height, 0);
-  
-        // Desplazar a la posición calculada
-        scrollViewRef.current.scrollTo({ y: scrollToY, animated: true });
-      }
-    }
-  }, [showModal, currentDate, itemHeights]);
+ 
 //////
 
   return (
@@ -1160,17 +1217,23 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
     </View>
 
     <ScrollView 
-    ref={scrollViewRef}
-    style={{ flex: 1 }}>
+    style={{ flex: 1 }}
+   /* ref={scrollViewRef}
+    onScrollBeginDrag={handleScrollBeginDrag}
+    onScrollEndDrag={handleScrollEndDrag}
+    onScrollBeinDrag={() => {
+      console.log('onScrollBeginDrag')
+      setForceScrollToToday(false); 
+    }}*/>
       {groupedRosterData.map((group, index) => (
       
       <View 
         style={Styles.Modal}
         key={index}
-        onLayout={(event) => {
+     /*   onLayout={(event) => {
           const { height } = event.nativeEvent.layout;
           handleItemLayout(index, height);
-        }}>     
+        }}*/>     
         
         <View style={{flexDirection:'row',
                       justifyContent:'space-between',
@@ -1558,7 +1621,8 @@ if (checkInTime && checkOutTime) {
    
     <TouchableOpacity 
     style={{flex:1}}
-    onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
+    onPress={()=>{setShowModal(false), navigation.navigate('Login'),setAppStarted(true)
+  }}
       >
       <View style={Styles.botonesMenuInferior}>
       <Feather name="settings" size={20} color="white" />
