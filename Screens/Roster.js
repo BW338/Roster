@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect  } from 'react';
 import { StatusBar  as ExpoStatusBar } from 'expo-status-bar';
 import { View, TextInput, Button, Alert, Modal, Text, ScrollView, Dimensions, ToastAndroid, Platform,
          TouchableOpacity,StyleSheet,Image, useFocusEffect , StatusBar} from 'react-native';
@@ -58,23 +58,15 @@ export default function Roster({ route }) {
   const anioHoy = hoyFecha.getFullYear();
   const fechaInicio = `${diaHoy} / ${mesHoy} / ${anioHoy}`;
 
-  const [focusedDate, setFocusedDate] = useState(new Date());
-  const [itemHeights, setItemHeights] = useState([]); // Alturas de los elementos
-  const scrollViewRef = useRef(null);
+  const [scrollViewRef, setScrollViewRef] = useState(null);
+  const [itemHeights, setItemHeights] = useState([]);
+  const [isManualScrolling, setIsManualScrolling] = useState(false);
+  const [scrollAnimationInProgress, setScrollAnimationInProgress] = useState(false);
+  const [targetElementRef, setTargetElementRef] = useState(null);
+  const [targetElementPosition, setTargetElementPosition] = useState(null);
+  const [targetElementIndex, setTargetElementIndex] = useState(null);
 
-////abre el Roster cuando se viene del boton ver Roster de Login.js/////  
-  useEffect(() => {
-    // Verifica si showModalIdentifier se proporcionó en las propiedades de navegación
-    if (route.params?.showModalIdentifier) {
-      const identifier = route.params.showModalIdentifier;
-      // Realiza acciones específicas según la identificación
-      if (identifier === 'verRoster') {
-        setShowModal(true);
-      }
-      // Restablece la identificación en las propiedades de navegación para que no se vuelva a usar
-      navigation.setParams({ showModalIdentifier: null });
-    }
-  }, [route.params, navigation]);
+
 /////////////////////////////////////////////
 const HEROKU_SERVER_URL = 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com'; // Reemplaza con la URL de tu servidor de Heroku
 
@@ -160,117 +152,22 @@ const borrarCuenta = async () => {
 
 };  
 
-const fetchUserData = async () => {
-  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
-  const isFromSignIn = routeParams.fromSignIn || false;
-
-  // Verifica si la función debe ejecutarse solo si viene de signIn
-  if (!isFromSignIn) {
-    return;
-  }
-
-  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
-  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
-
-  try {
-    const querySnapshot = await getDocs(queryByEmail);
-
-    if (!querySnapshot.empty) {
-      querySnapshot.forEach((doc) => {
-        const userData = doc.data();
-        console.log("Datos del usuario:", userData);
-        const exp = doc.data().expirationDate;
-        
-        const timestamp = exp;
-        const fecha = new Date(timestamp);
-
-        setExp(fecha);
-
-        console.log("Caduca el *"+ fecha); 
-        
-        setVencimiento(exp)
-        setVencido(fechaCaducidad);
-
-        // Actualizar esVigente después de obtener los datos
-        const hoy = Date.now();
-        const vigente = exp > hoy;
-        setEsVigente(vigente);
-      });
-    } else {
-      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
-    }
-  } catch (error) {
-    console.error("Error al consultar los datos del usuario:", error);
-  }       
-};
-
-
-const ejecutarFuncionX = async () => {
-  // Lógica de tu función
-  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
-  const isFromSignIn = routeParams.fromSignIn || false;
-
-  // Verifica si la función debe ejecutarse solo si viene de signIn
-  if (!isFromSignIn) {
-    return;
-  }
-
-  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
-  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
-
-  try {
-    const querySnapshot = await getDocs(queryByEmail);
-
-    if (!querySnapshot.empty) {
-      querySnapshot.forEach((doc) => {
-        const userData = doc.data();
-        console.log("Datos del usuario:", userData);
-        const exp = doc.data().expirationDate;
-        
-        const timestamp = exp;
-        const fecha = new Date(timestamp);
-
-        setExp(fecha);
-
-        console.log("Caduca el *"+ fecha); 
-        
-        setVencimiento(exp)
-        setVencido(fechaCaducidad);
-
-        // Actualizar esVigente después de obtener los datos
-        const hoy = Date.now();
-        const vigente = exp > hoy;
-        setEsVigente(vigente);
-      });
-    } else {
-      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
-    }
-  } catch (error) {
-    console.error("Error al consultar los datos del usuario:", error);
-  }     
-  // Llamada a fetchUserData
-  await fetchUserData();
-}; 
-
-
 useEffect(() => {
-  // Llamada inicial a fetchUserData al montar el componente
-ejecutarFuncionX();
-}, [userEmail]);
+  console.log('useEx linea 153');
 
+  const unsubscribe = navigation.addListener('focus', () => {
+    fetchUserData();
+    ejecutarFuncionX();
+  });
 
-useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchUserData();
-      ejecutarFuncionX();
-    });
+  ejecutarFuncionX(); // Ejecutar la función x al montar la pantalla
 
-    ejecutarFuncionX(); // Ejecutar la función x al montar la pantalla
-
-    return unsubscribe;
-  }, [navigation]);
+  return unsubscribe;
+}, [navigation]);
 /////////
 useEffect(() => {
+  console.log('useEx linea 165')
+
   // Recupera el estado del CheckBox desde AsyncStorage
 const getRememberDataSetting = async () => {
     try {
@@ -288,7 +185,14 @@ const getRememberDataSetting = async () => {
   };
 
   getRememberDataSetting();
-}, []);
+ // Desplázate al elemento de destino cuando el modal se abre
+ if (scrollViewRef && targetElementPosition !== null) {
+  console.log('ScrollView Reference:', scrollViewRef);
+  console.log('Target Element Position:', targetElementPosition);
+
+  scrollViewRef.scrollTo({ y: targetElementPosition, animated: true });
+}
+}, [scrollViewRef, targetElementPosition]);
 
 const toggleCrewVisibility = (flightIndex, date) => {
     if (selectedFlight && selectedFlight.index === flightIndex && selectedFlight.date === date) {
@@ -297,16 +201,24 @@ const toggleCrewVisibility = (flightIndex, date) => {
     } else {
       // Si no está abierto, ábrelo
       setSelectedFlight({ index: flightIndex, date });
+      setIsManualScrolling(false);
+
     }
   };
 
-const formatCustomDate = (date) => {
+  const formatCustomDate = (date) => {
+    if (!(date instanceof Date) || isNaN(date)) {
+      return 'INVALID DATE';
+    }
+  
     const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  
     const dayOfWeek = daysOfWeek[date.getDay()];
     const dayOfMonth = date.getDate();
-    const shortMonth = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-  //  console.log('dia'+ `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`)
-    return `${dayOfWeek}, ${dayOfMonth} ${shortMonth}`;
+    const month = months[date.getMonth()];
+  
+    return `${dayOfWeek}, ${dayOfMonth} ${month}`;
   };
   
 const formatDate = (dateStr) => {
@@ -365,6 +277,8 @@ const loadConfig = async () => {
   };
 
 useEffect(() => {
+  console.log('useEx linea 263')
+
     loadConfig();
   }, []);
 
@@ -386,6 +300,8 @@ const saveConfig = async () => {
   };
   
 useEffect(() => {
+  console.log('useEx linea 286')
+
     if (url && username && clave) {
       webViewRef.current?.reload();
     }
@@ -883,31 +799,109 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 );
 
 ///////
- const handleItemLayout = (index, height) => {
-    setItemHeights((prevHeights) => {
-      const updatedHeights = [...prevHeights];
-      updatedHeights[index] = height;
-      return updatedHeights;
-    });
-  };
+const fetchUserData = async () => {
+  console.log('fetchUserData')
 
-  useEffect(() => {
-    if (scrollViewRef.current) {
-      const todayIndex = groupedRosterData.findIndex(
-        (group) => formatDate(group.date) === formatCustomDate(currentDate)
-      );
-  
-      if (todayIndex !== -1) {
-        // Calcular la posición de desplazamiento para el día actual
-        const scrollToY = itemHeights
-          .slice(0, todayIndex)
-          .reduce((acc, height) => acc + height, 0);
-  
-        // Desplazar a la posición calculada
-        scrollViewRef.current.scrollTo({ y: scrollToY, animated: true });
-      }
+  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
+  const isFromSignIn = routeParams.fromSignIn || false;
+
+  // Verifica si la función debe ejecutarse solo si viene de signIn
+  if (!isFromSignIn) {
+    return;
+  }
+console.log('fetchUsetData')
+
+  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+
+  try {
+    const querySnapshot = await getDocs(queryByEmail);
+
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        console.log("Datos del usuario:", userData);
+        const exp = doc.data().expirationDate;
+        
+        const timestamp = exp;
+        const fecha = new Date(timestamp);
+
+        setExp(fecha);
+
+        console.log("Caduca el *"+ fecha); 
+        
+        setVencimiento(exp)
+        setVencido(fechaCaducidad);
+
+        // Actualizar esVigente después de obtener los datos
+        const hoy = Date.now();
+        const vigente = exp > hoy;
+        setEsVigente(vigente);
+      });
+    } else {
+      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
     }
-  }, [showModal, currentDate, itemHeights]);
+  } catch (error) {
+    console.error("Error al consultar los datos del usuario:", error);
+  }       
+};
+
+const ejecutarFuncionX = async () => {
+  console.log('FuncionX')
+  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
+  const isFromSignIn = routeParams.fromSignIn || false;
+
+  // Verifica si la función debe ejecutarse solo si viene de signIn
+  if (!isFromSignIn) {
+    return;
+  }
+
+  const usersCollection = collection(FIREBASE_FIRESTORE, "users");
+  const queryByEmail = query(usersCollection, where("email", "==", userEmail));
+  console.log('FuncionX')
+
+  try {
+    const querySnapshot = await getDocs(queryByEmail);
+
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        console.log("Datos del usuario:", userData);
+        const exp = doc.data().expirationDate;
+        
+        const timestamp = exp;
+        const fecha = new Date(timestamp);
+
+        setExp(fecha);
+
+        console.log("Caduca el *"+ fecha); 
+        
+        setVencimiento(exp)
+        setVencido(fechaCaducidad);
+
+        // Actualizar esVigente después de obtener los datos
+        const hoy = Date.now();
+        const vigente = exp > hoy;
+        setEsVigente(vigente);
+      });
+    } else {
+      console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
+    }
+  } catch (error) {
+    console.error("Error al consultar los datos del usuario:", error);
+  }     
+  // Llamada a fetchUserData
+  await fetchUserData();
+}; 
+
+///*/*/*/*/*/*/*/*/*/*/*/*
+const scrollToPosition = (position) => {
+  if (scrollViewRef) {
+    scrollViewRef.scrollTo({ y: position, animated: true });
+  }
+};
+
+
 //////
 
   return (
@@ -1159,18 +1153,18 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
     <Fontisto name="cloudflare" size={42} color="white"  style={{paddingVertical:0, alignSelf:'center', marginTop:3}} />
     </View>
 
-    <ScrollView 
-    ref={scrollViewRef}
-    style={{ flex: 1 }}>
-      {groupedRosterData.map((group, index) => (
-      
-      <View 
-        style={Styles.Modal}
-        key={index}
-        onLayout={(event) => {
-          const { height } = event.nativeEvent.layout;
-          handleItemLayout(index, height);
-        }}>     
+    <ScrollView
+  ref={(ref) => setScrollViewRef(ref)}
+  style={{ flex: 1 }}
+  onContentSizeChange={() => {
+    scrollToPosition(21800); // Ajusta la posición según tus necesidades
+  }}
+>
+  {groupedRosterData.map((group, index) => (
+    <View
+      style={Styles.Modal}
+      key={index}
+    >
         
         <View style={{flexDirection:'row',
                       justifyContent:'space-between',
@@ -1223,9 +1217,6 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
             const hasNroVuelo = item.NroVuelo && item.NroVuelo !== ' ';
             const hasCrew = item.Crew && item.Crew.length > 0; // Verifica si hay información de tripulación
 
-         //   console.log("extractedTIme"+extractTime(item.CheckOut))
-      //////TSV
-
         var OutMS = 0;
         var InMS = 0;
         const CheckInHora = item.CheckIn.slice(-5);
@@ -1250,10 +1241,6 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
         const horas = fecha.getHours().toString().padStart(2, '0');
         const minutos = fecha.getMinutes().toString().padStart(2, '0');
         const horaEnFormatoHHMM = `${horas}:${minutos}`;
-        
-//        console.log('IN-MS '+ InMS);
-//        console.log('OUT-MS '+ OutMS); 
-//       console.log('///////'+ horaEnFormatoHHMM); // Resultado en formato HH:MM
       }
        
 // Ejemplo de uso para item.CheckIn y item.CheckOut
@@ -1271,12 +1258,7 @@ if (checkInTime && checkOutTime) {
   // Formatea la diferencia de tiempo en "HH:MM"
   var tsv = (OutMS - InMS);
 
-//console.log('TSV: '+ tsv)
-  // Ahora puedes mostrar 'tsv' en tu interfaz donde lo necesites
 }
-      
-
-
           ///////////////////
             // Comprueba si tienes datos válidos antes de renderizar la sección
           if (!item.CheckIn &&
