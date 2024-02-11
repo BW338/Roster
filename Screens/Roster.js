@@ -797,17 +797,6 @@ groupedRosterDataWithTotalDifference.forEach((group, index) => {
 
 ///////
 const fetchUserData = async () => {
-  console.log('fetchUserData')
-
-  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
-  const isFromSignIn = routeParams.fromSignIn || false;
-
-  // Verifica si la función debe ejecutarse solo si viene de signIn
-  if (!isFromSignIn) {
-    return;
-  }
-console.log('fetchUsetData')
-
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
@@ -834,6 +823,20 @@ console.log('fetchUsetData')
         const hoy = Date.now();
         const vigente = exp > hoy;
         setEsVigente(vigente);
+      /*  setTimeout(() => {
+          if(fechaCaducidad == "31/12/1969" || fechaCaducidad == '1/1/1970'){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          }
+          if(fechaCaducidad == "NaN/NaN/NaN"){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          } else {
+            setVencido(fechaCaducidad)
+            console.log('*****' + fechaCaducidad)
+          }
+        }, 3000);
+*/
       });
     } else {
       console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
@@ -844,18 +847,11 @@ console.log('fetchUsetData')
 };
 
 const ejecutarFuncionX = async () => {
-  console.log('FuncionX')
-  const routeParams = route.params || {}; // Asegúrate de que route.params no sea nulo
-  const isFromSignIn = routeParams.fromSignIn || false;
-
-  // Verifica si la función debe ejecutarse solo si viene de signIn
-  if (!isFromSignIn) {
-    return;
-  }
-
+  // Lógica de tu función 
+  //console.log('Función x ejecutada al iniciar o enfocar RosterScreen');
+  //
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
-  console.log('FuncionX')
 
   try {
     const querySnapshot = await getDocs(queryByEmail);
@@ -880,6 +876,20 @@ const ejecutarFuncionX = async () => {
         const hoy = Date.now();
         const vigente = exp > hoy;
         setEsVigente(vigente);
+      /*  setTimeout(() => {
+          if(fechaCaducidad == "31/12/1969" || fechaCaducidad == '1/1/1970'){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          }
+          if(fechaCaducidad == "NaN/NaN/NaN"){
+            setVencido('sin suscripcion')
+            console.log('----' + vencido)
+          } else {
+            setVencido(fechaCaducidad)
+            console.log('*****' + fechaCaducidad)
+          }
+        }, 3000);
+*/
       });
     } else {
       console.log("No se encontraron datos para el usuario con el correo electrónico:", userEmail);
@@ -890,6 +900,43 @@ const ejecutarFuncionX = async () => {
   // Llamada a fetchUserData
   await fetchUserData();
 }; 
+
+useEffect(() => {
+  // Llamada inicial a fetchUserData al montar el componente
+ejecutarFuncionX();
+}, [userEmail]);
+
+
+useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchUserData();
+      ejecutarFuncionX();
+    });
+
+    ejecutarFuncionX(); // Ejecutar la función x al montar la pantalla
+
+    return unsubscribe;
+  }, [navigation]);
+/////////
+useEffect(() => {
+  // Recupera el estado del CheckBox desde AsyncStorage
+const getRememberDataSetting = async () => {
+    try {
+      const storedRememberData = await AsyncStorage.getItem('rememberData');
+      // Si se encuentra un valor en AsyncStorage, convierte a booleano
+      if (storedRememberData !== null) {
+        setRememberData(JSON.parse(storedRememberData));
+      } else {
+        // Valor predeterminado si no se encuentra ningún valor en AsyncStorage
+        setRememberData(false);
+      }
+    } catch (error) {
+      console.error('Error al recuperar el estado del CheckBox:', error);
+    }
+  };
+
+  getRememberDataSetting();
+}, []);
 
 ///*/*/*/*/*/*/*/*/*/*/*/*
 const scrollToPosition = (position) => {
