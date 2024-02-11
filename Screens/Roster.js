@@ -154,8 +154,6 @@ const borrarCuenta = async () => {
 };  
 
 useEffect(() => {
-  console.log('useEx linea 153');
-
   const unsubscribe = navigation.addListener('focus', () => {
     fetchUserData();
     ejecutarFuncionX();
@@ -167,7 +165,6 @@ useEffect(() => {
 }, [navigation]);
 /////////
 useEffect(() => {
-  console.log('useEx linea 165')
 
   // Recupera el estado del CheckBox desde AsyncStorage
 const getRememberDataSetting = async () => {
@@ -278,7 +275,6 @@ const loadConfig = async () => {
   };
 
 useEffect(() => {
-  console.log('useEx linea 263')
 
     loadConfig();
   }, []);
@@ -912,6 +908,8 @@ useEffect(() => {
           (x, y, width, height) => {
             console.log('Posición Y del elemento:', y);
             // Aquí puedes hacer lo que necesites con la posición Y
+            // Llama a la función scrollToPosition() para posicionar la vista en el día de la fecha
+            scrollToPosition(y);
           }
         );
       }
@@ -921,7 +919,7 @@ useEffect(() => {
     if (currentDateRef) {
       getPositionY();
     }
-  }, 100); // Espera 1 segundo antes de medir la posición Y
+  }, 10); // Espera 100 milisegundos antes de medir la posición Y
 
   return () => clearTimeout(timer);
 }, [currentDateRef]); // Ejecutar el efecto cuando la referencia del elemento cambie
@@ -1181,9 +1179,7 @@ useEffect(() => {
     <ScrollView
   ref={(ref) => setScrollViewRef(ref)}
   style={{ flex: 1 }}
-  onContentSizeChange={() => {
-    scrollToPosition(305.5238037109375); // Ajusta la posición según tus necesidades
-  }}
+ 
 >
   {groupedRosterData.map((group, index) => (
     <View
