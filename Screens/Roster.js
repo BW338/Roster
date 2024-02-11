@@ -65,6 +65,7 @@ export default function Roster({ route }) {
   const [targetElementRef, setTargetElementRef] = useState(null);
   const [targetElementPosition, setTargetElementPosition] = useState(null);
   const [targetElementIndex, setTargetElementIndex] = useState(null);
+  const [currentDateRef, setCurrentDateRef] = useState(null);
 
 
 /////////////////////////////////////////////
@@ -901,6 +902,30 @@ const scrollToPosition = (position) => {
   }
 };
 
+useEffect(() => {
+  const timer = setTimeout(() => {
+    // Función para obtener la posición Y del elemento del día de la fecha actual
+    const getPositionY = () => {
+      if (currentDateRef) {
+        currentDateRef.measureLayout(
+          scrollViewRef, // Referencia al ScrollView
+          (x, y, width, height) => {
+            console.log('Posición Y del elemento:', y);
+            // Aquí puedes hacer lo que necesites con la posición Y
+          }
+        );
+      }
+    };
+
+    // Llamada a la función para obtener la posición Y cuando cambie la referencia del elemento
+    if (currentDateRef) {
+      getPositionY();
+    }
+  }, 100); // Espera 1 segundo antes de medir la posición Y
+
+  return () => clearTimeout(timer);
+}, [currentDateRef]); // Ejecutar el efecto cuando la referencia del elemento cambie
+
 
 //////
 
@@ -1157,13 +1182,14 @@ const scrollToPosition = (position) => {
   ref={(ref) => setScrollViewRef(ref)}
   style={{ flex: 1 }}
   onContentSizeChange={() => {
-    scrollToPosition(21800); // Ajusta la posición según tus necesidades
+    scrollToPosition(305.5238037109375); // Ajusta la posición según tus necesidades
   }}
 >
   {groupedRosterData.map((group, index) => (
     <View
       style={Styles.Modal}
       key={index}
+      
     >
         
         <View style={{flexDirection:'row',
@@ -1171,7 +1197,14 @@ const scrollToPosition = (position) => {
                       borderWidth:1,
                       borderColor:'black',
                       backgroundColor: formatDate(group.date) === formatCustomDate(currentDate) ? '#FFFCCB' : 'white',
-                    }}>
+                    }}
+                    ref={(ref) => {
+                      // Guarda la referencia del elemento del día actual en una variable de estado
+                      if (formatDate(group.date) === formatCustomDate(currentDate)) {
+                        setCurrentDateRef(ref);
+                      }
+                    }}
+                    >
           <Text style={{
             textAlign: 'left',
             paddingHorizontal: 4,
