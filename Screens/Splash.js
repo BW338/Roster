@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, ImageBackground, TouchableOpacity, TouchableWithoutFeedback, Animated, Dimensions, StyleSheet, TouchableNativeFeedback } from 'react-native';
 import { Fontisto } from '@expo/vector-icons';
-import { FIREBASE_AUTH } from "../FirebaseConfig";
-import Login from "./Login";
 
 const windowHeight = Dimensions.get('window').height;
 const margenSup = windowHeight * 0.055; // Ajusta el margen superior porcentualmente

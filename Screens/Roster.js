@@ -15,7 +15,6 @@ import { openBrowserAsync } from "expo-web-browser";
 import { handleIntegrationMP } from '../MP/preference'; // Importa el módulo
 
 
-
 const currentDate = new Date(); // Obtiene la fecha actual
 
 const windowHeight = Dimensions.get('window').height;
@@ -1642,20 +1641,20 @@ if (checkInTime && checkOutTime) {
   <View style={Styles.contenedorBotones}>        
    
     <TouchableOpacity 
-    style={{flex:1}}
-    onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
-      >
-
+     onPress={()=>{setShowModal(false), navigation.navigate('Login')}}>
       <View style={Styles.configuracion}>  
-      <Feather name="settings" size={20} color="white" />
-        <Text style={Styles.txBotones}>Configuracion</Text>
+      <View style={{alignItems:'center', flexDirection:'row', marginLeft:12}}>
+      <Feather name="settings" size={24} color="white"/>
+        <Text style={Styles.hoytx}>Configuracion</Text>
+        </View>
       </View>
       </TouchableOpacity>
 
       <TouchableOpacity
       onPress={diaDeHoy}>
         <View style={Styles.hoy}> 
-          <Text style={Styles.hoytx}>Hoy</Text>
+        <Ionicons name="today-outline" size={24} color="#fff8dc" />
+          <Text style={Styles.hoytx}>Actividad de Hoy</Text>
         </View>
         </TouchableOpacity>
 
@@ -1892,14 +1891,19 @@ const Styles = StyleSheet.create({
   },
   contenedorBotones:{
     backgroundColor: `#191970`,
-    borderTopLeftRadius:10,
-    borderTopRightRadius:10,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
     flexDirection: 'row',
-    height:'5.5%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center', 
-    paddingHorizontal: 40, 
+    height: '4.7%',
+    borderTopColor: '#5f9ea0',
+    borderTopWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  //  flexDirection: 'row',
+  //  justifyContent: 'center',
+  //  alignItems: 'center', 
+  //  paddingHorizontal: 40,
+    //borderTopWidth:4,
 
   },
   botonesMenuInferior:{
@@ -1913,24 +1917,30 @@ const Styles = StyleSheet.create({
   },
   configuracion:{
     flexDirection:'row',
-   //  borderWidth:1,
-     borderColor:'white',
-    // justifyContent:'center',
-     alignContent:'center',
-     alignItems:'center',
-     marginRight:'16%',
+    borderWidth:1,
+    borderColor:'white',
+    borderTopLeftRadius: 30,
+     backgroundColor:'#4b0082',
+     paddingHorizontal:5,
+     justifyContent:'center',
+     marginRight:2,
+
    },
    hoytx:{
    fontSize:16,
-   color:'black',
-   padding:5,
-   fontWeight:'bold' 
+   color:'#fff8dc',
+   padding:2,
+   fontWeight:'bold',
+   paddingHorizontal:12, 
   },
    hoy:{
-    backgroundColor:'#ffd700',
+    flexDirection:'row',
+    backgroundColor:'#4682b4',
     borderWidth:1,
-    borderColor:'#00ced1',
-    borderRadius:30,
+    borderColor:'#fff8dc',
+    borderTopRightRadius:30,
+    paddingHorizontal:5,
+    marginLeft:2,
    },
   txBotones:{
   color:'white',
