@@ -68,8 +68,24 @@ export default function Roster({ route }) {
   const [currentDateRef, setCurrentDateRef] = useState(null);
 
 
+
 /////////////////////////////////////////////
 const HEROKU_SERVER_URL = 'https://stormy-taiga-82317-47575a2d66a9.herokuapp.com'; // Reemplaza con la URL de tu servidor de Heroku
+
+////abre el Roster cuando se viene del boton ver Roster de Login.js/////  
+useEffect(() => {
+  // Verifica si showModalIdentifier se proporcionó en las propiedades de navegación
+  if (route.params?.showModalIdentifier) {
+    const identifier = route.params.showModalIdentifier;
+    // Realiza acciones específicas según la identificación
+    if (identifier === 'verRoster') {
+      setShowModal(true);
+    }
+    // Restablece la identificación en las propiedades de navegación para que no se vuelva a usar
+    navigation.setParams({ showModalIdentifier: null });
+  }
+}, [route.params, navigation]);
+/////////////////////////////////////////////
 
 const handleBuy = async () => {
   try {
@@ -800,6 +816,7 @@ const fetchUserData = async () => {
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
 
+  console.log('fetchUserData')
   try {
     const querySnapshot = await getDocs(queryByEmail);
 
@@ -852,7 +869,8 @@ const ejecutarFuncionX = async () => {
   //
   const usersCollection = collection(FIREBASE_FIRESTORE, "users");
   const queryByEmail = query(usersCollection, where("email", "==", userEmail));
-
+ 
+  console.log('Funcion X')
   try {
     const querySnapshot = await getDocs(queryByEmail);
 
