@@ -989,7 +989,16 @@ useEffect(() => {
   return () => clearTimeout(timer);
 }, [currentDateRef]); // Ejecutar el efecto cuando la referencia del elemento cambie
 
-
+const diaDeHoy = () => {
+  if (currentDateRef) {
+    currentDateRef.measureLayout(
+      scrollViewRef,
+      (x, y, width, height) => {
+        scrollToPosition(y);
+      }
+    );
+  }
+};
 //////
 
   return (
@@ -998,7 +1007,7 @@ useEffect(() => {
      <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
    
     <View style={Styles.inputContainer}>
-      <Text style={Styles.label}>Ingresa la dirección Web de tu plan de vuelo:</Text>
+      <Text style={Styles.url}>Ingresa la dirección Web de tu plan de vuelo:</Text>
       <TextInput
         style={Styles.input}
         placeholder="http://portal.com.ar/ccweb/CWPLog/cwp_warT....."
@@ -1636,23 +1645,23 @@ if (checkInTime && checkOutTime) {
     style={{flex:1}}
     onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
       >
-      <View style={Styles.botonesMenuInferior}>
+
+      <View style={Styles.configuracion}>  
       <Feather name="settings" size={20} color="white" />
         <Text style={Styles.txBotones}>Configuracion</Text>
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
 
-  { /* <TouchableOpacity 
-    style={{flex:1}}
-    onPress={()=>{setShowModal(false), navigation.navigate('Login')}}
-      >
-      <View style={Styles.botonesMenuInferior}>
-      <FontAwesome name="refresh" size={20} color="white"/>
-      <Text style={Styles.txBotones}>Actualizar Roster</Text>
-      </View>
-    </TouchableOpacity>*/}
+      <TouchableOpacity
+      onPress={diaDeHoy}>
+        <View style={Styles.hoy}> 
+          <Text style={Styles.hoytx}>Hoy</Text>
+        </View>
+        </TouchableOpacity>
+
   
   </View>  
+
 </View>
 </Modal>
 
@@ -1743,6 +1752,13 @@ const Styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  url: {
+    marginLeft: 5,
+    marginBottom: 5,
+    fontSize: 18,
+    fontWeight:'bold',
+    color: '#333',
+  },
   input: {
     backgroundColor: 'white',
     paddingHorizontal: 10,
@@ -1773,6 +1789,7 @@ const Styles = StyleSheet.create({
   Modal:{
     borderWidth:3,
     borderColor:'#b0c4de',
+    borderBottomLeftRadius:0
 
   },
   titulo:{
@@ -1875,21 +1892,46 @@ const Styles = StyleSheet.create({
   },
   contenedorBotones:{
     backgroundColor: `#191970`,
-    borderBottomLeftRadius:0,
-    borderBottomRigthRadius:0,
-   flexDirection: 'row',
-   height:'5%',
-   justifyContent:'center',
+    borderTopLeftRadius:10,
+    borderTopRightRadius:10,
+    flexDirection: 'row',
+    height:'5.5%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center', 
+    paddingHorizontal: 40, 
+
   },
   botonesMenuInferior:{
    flex:1,
    flexDirection:'row',
     borderWidth:1,
     borderColor:'white',
-    justifyContent:'center',
-    alignContent:'center',
-    alignItems:'center',
+    justifyContent:'space-around',
+    alignContent:'space-around',
+    alignItems:'space-around',
   },
+  configuracion:{
+    flexDirection:'row',
+   //  borderWidth:1,
+     borderColor:'white',
+    // justifyContent:'center',
+     alignContent:'center',
+     alignItems:'center',
+     marginRight:'16%',
+   },
+   hoytx:{
+   fontSize:16,
+   color:'black',
+   padding:5,
+   fontWeight:'bold' 
+  },
+   hoy:{
+    backgroundColor:'#ffd700',
+    borderWidth:1,
+    borderColor:'#00ced1',
+    borderRadius:30,
+   },
   txBotones:{
   color:'white',
   marginLeft:3,
